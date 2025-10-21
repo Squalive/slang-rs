@@ -38,7 +38,7 @@ pub struct ISlangFileSystem_vtable {
 
 #[repr(C)]
 pub struct IGlobalSession_vtable {
-	pub _base: ISlangCastable_vtable,
+	pub _base: ISlangUnknown__bindgen_vtable,
 
 	pub createSession: fp!((desc: *const slang_SessionDesc, outSession: *mut *mut slang_ISession) -> SlangResult),
 	pub findProfile: fp!((name: *const c_char) -> SlangProfileID),

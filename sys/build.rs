@@ -36,8 +36,69 @@ fn main() {
 		.vtable_generation(true)
 		.layout_tests(false)
 		.derive_copy(true)
+		.allowlist_function("slang_.*")
+		.allowlist_type("slang.*")
+		.allowlist_var("SLANG_.*")
+		.with_codegen_config(
+			bindgen::CodegenConfig::FUNCTIONS
+				| bindgen::CodegenConfig::TYPES
+				| bindgen::CodegenConfig::VARS,
+		)
+		.default_enum_style(bindgen::EnumVariation::Rust {
+			non_exhaustive: false,
+		})
+		.parse_callbacks(Box::new(ParseCallback))
 		.generate()
 		.expect("Couldn't generate bindings")
 		.write_to_file(format!("{out_dir}/bindings.rs"))
 		.expect("Couldn't write bindings");
+}
+
+#[derive(Debug)]
+struct ParseCallback;
+
+impl bindgen::callbacks::ParseCallbacks for ParseCallback {
+	fn enum_variant_name(
+		&self,
+		enum_name: Option<&str>,
+		original_variant_name: &str,
+		_variant_value: bindgen::callbacks::EnumVariantValue) -> Option<String> {
+		let enum_name = enum_name?;
+
+		// Map enum names to the part of their variant names that needs to be trimmed.
+		// When an enum name is not in this map the code below will try to trim the enum name itself.
+		let mut map = std::collections::HashMap::new();
+		map.insert("SlangMatrixLayoutMode", "SlangMatrixLayout");
+		map.insert("SlangCompileTarget", "Slang");
+
+		let trim = map.get(enum_name).unwrap_or(&enum_name);
+		let new_variant_name = pascal_case_from_snake_case(original_variant_name);
+		let new_variant_name = new_variant_name.trim_start_matches(trim);
+		Some(new_variant_name.to_string())
+	}
+}
+
+/// Converts `snake_case` or `SNAKE_CASE` to `PascalCase`.
+/// If the input is already in `PascalCase` it will be returned as is.
+fn pascal_case_from_snake_case(snake_case: &str) -> String {
+	let mut result = String::new();
+
+	let should_lower = snake_case
+		.chars()
+		.filter(|c| c.is_alphabetic())
+		.all(|c| c.is_uppercase());
+
+	for part in snake_case.split('_') {
+		for (i, c) in part.chars().enumerate() {
+			if i == 0 {
+				result.push(c.to_ascii_uppercase());
+			} else if should_lower {
+				result.push(c.to_ascii_lowercase());
+			} else {
+				result.push(c);
+			}
+		}
+	}
+
+	result
 }
