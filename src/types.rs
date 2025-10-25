@@ -1,15 +1,19 @@
 ﻿mod com;
 
-use crate::{CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, OptimizationLevel, SourceLanguage, Stage};
-use alloc::vec::Vec;
-use std::ffi::{c_char, CString};
-use std::marker::PhantomData;
-use std::mem::zeroed;
-use std::ptr::null;
+pub use com::*;
 
-#[repr(transparent)]
+use crate::{CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, OptimizationLevel, ProfileId, SourceLanguage, Stage};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::marker::PhantomData;
+use core::mem::zeroed;
+use core::ptr::null;
+use std::ffi::{c_char, CString};
+
+#[repr(C)]
 pub struct SessionDesc<'a> {
-	inner: sys::slang_SessionDesc,
+	pub(crate) inner: sys::slang_SessionDesc,
+	pub(crate) file_system: Option<Com<Box<dyn ISlangFileSystem>>>,
 	_marker: PhantomData<&'a ()>,
 }
 
@@ -20,16 +24,13 @@ impl Default for SessionDesc<'_> {
 				structureSize: size_of::<sys::slang_SessionDesc>(),
 				..unsafe { zeroed() }
 			},
+			file_system: None,
 			_marker: PhantomData,
 		}
 	}
 }
 
 impl<'a> SessionDesc<'a> {
-	pub(crate) fn as_raw(&self) -> *const sys::slang_SessionDesc {
-		&self.inner
-	}
-
 	pub fn targets(mut self, targets: &'a [TargetDesc]) -> Self {
 		self.inner.targets = targets.as_ptr() as _;
 		self.inner.targetCount = targets.len() as _;
@@ -50,6 +51,11 @@ impl<'a> SessionDesc<'a> {
 
 	pub fn skip_spirv_validation(mut self, yes: bool) -> Self {
 		self.inner.skipSPIRVValidation = yes;
+		self
+	}
+
+	pub fn file_system(mut self, file_system: impl ISlangFileSystem + 'static) -> Self {
+		self.file_system = Some(Com::new_file_system(Box::new(file_system)));
 		self
 	}
 }
@@ -167,7 +173,7 @@ impl CompilerOptions {
 	option!(ValidateUniformity, validate_uniformity(enable: i32 bool));
 }
 
-#[repr(transparent)]
+#[repr(C)]
 pub struct TargetDesc<'a> {
 	inner: sys::slang_TargetDesc,
 	_marker: PhantomData<&'a ()>,
@@ -191,9 +197,10 @@ impl<'a> TargetDesc<'a> {
 		self
 	}
 
-	// pub fn profile(mut self, profile: ProfileID) -> Self {
-	// 	self.inner.profile = profile.0
-	// }
+	pub fn profile(mut self, profile: ProfileId) -> Self {
+		self.inner.profile = profile.0;
+		self
+	}
 
 	pub fn options(mut self, options: &'a CompilerOptions) -> Self {
 		self.inner.compilerOptionEntries = options.options.as_ptr() as _;

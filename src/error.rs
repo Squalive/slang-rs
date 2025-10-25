@@ -4,10 +4,14 @@
 pub enum Error {
 	#[error("Invalid pointer")]
 	InvalidPtr,
+	#[error(transparent)]
+	Io(#[from] std::io::Error),
 	#[error("Failed with code: {0}")]
 	Code(sys::SlangResult),
 	#[error("Failed with diagnotics: {0:?}")]
 	Blob(Blob),
+	#[error("Unknown")]
+	Unknown,
 }
 
 unsafe impl Send for Error {}

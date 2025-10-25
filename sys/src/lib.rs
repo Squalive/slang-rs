@@ -5,6 +5,7 @@ use std::ffi::{c_char, c_void};
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+
 macro_rules! fp {
     ( ($($pn:ident: $pt:ty),*) ) => {
 		unsafe extern "C" fn(*mut c_void, $($pn: $pt),*)
@@ -142,11 +143,104 @@ pub struct ISession_vtable {
 		path: *const c_char,
 		string: *const c_char,
 		outDiagnostics: *mut *mut ISlangBlob
-	)),
+	) -> *mut slang_IModule),
 	pub getDynamicObjectRTTIBytes: fp!((
 		type_: *mut slang_TypeReflection,
 		interfaceType: *mut slang_TypeReflection,
 		outRTTIDataBuffer: *mut u32,
 		bufferSizeInBytes: u32
 	) -> SlangResult),
+}
+
+#[repr(C)]
+pub struct IMetadata_vtable {
+	pub _base: ISlangCastable_vtable,
+
+	pub isParameterLocationUsed: fp!((
+		category: SlangParameterCategory,
+		spaceIndex: SlangUInt,
+		registerIndex: SlangUInt,
+		outUsed: *mut bool
+	) -> SlangResult),
+	pub getDebugBuildIdentifier: fp!(() -> *const c_char),
+}
+
+#[repr(C)]
+pub struct IComponentType_vtable {
+	pub _base: ISlangUnknown__bindgen_vtable,
+
+	pub getSession: fp!(() -> *mut slang_ISession),
+	pub getLayout: fp!((targetIndex: SlangInt, outDiagnostics: *mut *mut ISlangBlob) -> *mut slang_ProgramLayout),
+	pub getSpecializationParamCount: fp!(() -> SlangInt),
+	pub getEntryPointCode: fp!((
+		entryPointIndex: SlangInt,
+		targetIndex: SlangInt,
+		outCode: *mut *mut ISlangBlob,
+		outDiagnostics: *mut *mut ISlangBlob
+	) -> SlangResult),
+	pub getResultAsFileSystem: fp!((
+		entryPointIndex: SlangInt,
+        targetIndex: SlangInt,
+        outFileSystem: *mut *mut ISlangMutableFileSystem
+	) -> SlangResult),
+	pub getEntryPointHash: fp!((entryPointIndex: SlangInt, targetIndex: SlangInt, outHash: *mut *mut ISlangBlob)),
+	pub specialize: fp!((
+		specializationArgs: *const slang_SpecializationArg,
+		specializationArgCount: SlangInt,
+		outSpecializedComponentType: *mut *mut slang_IComponentType,
+		outDiagnostics: *mut *mut ISlangBlob
+	) -> SlangResult),
+	pub link: fp!((outLinkedComponentType: *mut *mut slang_IComponentType, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult),
+	pub getEntryPointHostCallable: fp!((
+		entryPointIndex: i32,
+		targetIndex: i32,
+		outSharedLibrary: *mut *mut ISlangSharedLibrary,
+		outDiagnostics: *mut *mut ISlangBlob
+	) -> SlangResult),
+	pub renameEntryPoint: fp!((newName: *const c_char, outEntryPoint: *mut *mut slang_IComponentType) -> SlangResult),
+	pub linkWithOptions: fp!((
+		outLinkedComponentType: *mut *mut slang_IComponentType,
+		compilerOptionEntryCount: u32,
+		compilerOptionEntries: *mut slang_CompilerOptionEntry,
+		outDiagnostics: *mut *mut ISlangBlob
+	) -> SlangResult),
+	pub getTargetCode: fp!((targetIndex: SlangInt, outCode: *mut *mut ISlangBlob, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult),
+	pub getTargetMetadata: fp!((targetIndex: SlangInt, outMetadata: *mut *mut slang_IMetadata, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult),
+	pub getEntryPointMetadata: fp!((entryPointIndex: SlangInt, targetIndex: SlangInt, outMetadata: *mut *mut slang_IMetadata, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult),
+}
+
+#[repr(C)]
+pub struct IEntryPoint_vtable {
+	pub _base: IComponentType_vtable,
+
+	pub getFunctionReflection: fp!(() -> *mut slang_FunctionReflection),
+}
+
+#[repr(C)]
+pub struct ITypeConformance_vtable {
+	pub _base: IComponentType_vtable,
+}
+
+#[repr(C)]
+pub struct IModule_vtable {
+	pub _base: IComponentType_vtable,
+
+	pub findEntryPointByName: fp!((name: *const c_char, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult),
+	pub getDefinedEntryPointCount: fp!(() -> SlangInt32),
+	pub getDefinedEntryPoint: fp!((index: SlangInt32, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult),
+	pub serialize: fp!((outSerializedBlob: *mut *mut ISlangBlob) -> SlangResult),
+	pub writeToFile: fp!((fileName: *const c_char) -> SlangResult),
+	pub getName: fp!(() -> *const c_char),
+	pub getFilePath: fp!(() -> *const c_char),
+	pub getUniqueIdentity: fp!(() -> *const c_char),
+	pub findAndCheckEntryPoint: fp!((
+		name: *const c_char,
+        stage: SlangStage,
+        outEntryPoint: *mut *mut slang_IEntryPoint,
+        outDiagnostics: *mut *mut ISlangBlob
+	) -> SlangResult),
+	pub getDependencyFileCount: fp!(() -> SlangInt32),
+	pub getDependencyFilePath: fp!((index: SlangInt32) -> *const c_char),
+	pub getModuleReflection: fp!(() -> *mut slang_DeclReflection),
+	pub disassemble: fp!((outDisassembledBlob: *mut *mut ISlangBlob) -> SlangResult),
 }

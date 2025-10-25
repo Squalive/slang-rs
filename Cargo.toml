@@ -5,7 +5,11 @@ edition = "2024"
 
 [dependencies]
 slang_sys = { path = "sys" }
+tracing = { version = "0.1.41" }
 thiserror = { version = "2.0.17" }
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [[example]]
 name = "simple"

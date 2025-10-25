@@ -36,6 +36,8 @@ fn main() {
 		.vtable_generation(true)
 		.layout_tests(false)
 		.derive_copy(true)
+		.allowlist_function("spReflection.*")
+		.allowlist_function("spComputeStringHash")
 		.allowlist_function("slang_.*")
 		.allowlist_type("slang.*")
 		.allowlist_var("SLANG_.*")
@@ -75,6 +77,14 @@ impl bindgen::callbacks::ParseCallbacks for ParseCallback {
 		let new_variant_name = pascal_case_from_snake_case(original_variant_name);
 		let new_variant_name = new_variant_name.trim_start_matches(trim);
 		Some(new_variant_name.to_string())
+	}
+
+	fn add_derives(&self, info: &bindgen::callbacks::DeriveInfo<'_>) -> Vec<String> {
+		if info.name == "SlangUUID" {
+			return vec!["PartialEq".into(), "Eq".into()];
+		}
+
+		vec![]
 	}
 }
 
