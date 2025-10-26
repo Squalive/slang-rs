@@ -1,1 +1,1 @@
-module common
+module common;
