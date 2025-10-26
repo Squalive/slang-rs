@@ -121,6 +121,9 @@ const fn uuid(data1: u32, data2: u16, data3: u16, data4: [u8; 8]) -> Uuid {
 #[repr(transparent)]
 pub struct Unknown(NonNull<c_void>);
 
+// SAFETY: Unknown ptr should guarantee this
+unsafe impl Send for Unknown {}
+
 unsafe impl Interface for Unknown {
 	type Vtable = sys::ISlangUnknown__bindgen_vtable;
 	const UUID: Uuid = uuid(0x00000000, 0x0000, 0x0000, [0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46]);
