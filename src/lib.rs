@@ -309,6 +309,24 @@ impl Session {
 		Ok(module)
 	}
 
+	pub fn load_module_from_source(
+		&self,
+		module_name: &str,
+		path: &str,
+		source: impl ISlangBlob,
+	) -> Result<Module<'_>> {
+		let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
+		let path = CString::new(path).map_err(|_| Error::Unknown)?;
+		let source = Com::new_blob(source).into_unknown();
+		let mut out_diagnostics = null_mut();
+		let module = vcall!(self, loadModuleFromSource(module_name.as_ptr(), path.as_ptr(), source.0.as_ptr().cast(), &mut out_diagnostics));
+		if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
+			tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
+		}
+		let module = Module::new(Unknown::new_with_ref(module)?);
+		Ok(module)
+	}
+
 	pub fn loaded_module_count(&self) -> usize {
 		vcall!(self, getLoadedModuleCount()) as _
 	}
