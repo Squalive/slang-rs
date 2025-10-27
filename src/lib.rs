@@ -6,12 +6,14 @@ extern crate std;
 
 pub mod reflect;
 
+#[cfg(feature = "preprocess")]
+mod preprocess;
 mod types;
 mod error;
 
-use core::fmt::Debug;
-use core::str::Utf8Error;
 pub use error::*;
+#[cfg(feature = "preprocess")]
+pub use preprocess::preprocess;
 pub use sys::{
 	SlangCompileTarget as CompileTarget,
 	SlangDebugInfoLevel as DebugInfoLevel,
@@ -31,10 +33,12 @@ pub use types::*;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+use core::fmt::Debug;
+use core::marker::PhantomData;
+use core::ptr::{null_mut, NonNull};
+use core::str::Utf8Error;
 use std::ffi::{c_void, CStr, CString};
-use std::marker::PhantomData;
 use std::path::Path;
-use std::ptr::{null_mut, NonNull};
 
 unsafe trait Interface: Sized {
 	type Vtable;
@@ -74,20 +78,6 @@ macro_rules! vcall_maybe {
 				Ok(())
 			} else {
 				Err(Error::Code(result))
-			}
-		}
-	};
-}
-
-macro_rules! vcall_diagnostics {
-    ($self:expr, $method:ident($($args:expr),*)) => {
-		{
-			let mut out_diagnostics = null_mut();
-			let result = vcall!($self, $method($($args),* , &mut out_diagnostics));
-			if out_diagnostics.is_null() {
-				Ok(result)
-			} else {
-				Err(Blob(Unknown::new_with_ref(out_diagnostics).unwrap()))
 			}
 		}
 	};

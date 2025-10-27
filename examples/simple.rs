@@ -49,7 +49,7 @@ fn main() {
 		slang::TargetDesc::default()
 			.format(slang::CompileTarget::Wgsl),
 	];
-	let search_paths = [c"examples".as_ptr(), c"sys".as_ptr()];
+	// let search_paths = [c"examples".as_ptr()];
 
 	let filesystem = Filesystem;
 
@@ -61,12 +61,13 @@ fn main() {
 
 	let session = global_session.create_session(&session_desc).unwrap();
 	{
-		// let test_str = include_str!("test.slang");
-		let module = session.load_module("examples/test").unwrap();
-		// let module = session.load_module_from_source_string("Test", "examples/test", test_str).unwrap();
+		// let module = session.load_module("extest").unwrap();
+		let test_str = include_str!("test.slang");
+		let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
 
 		for dependency_file_path in module.dependency_file_paths() {
-			println!("{dependency_file_path}");
+			let path = Path::new(dependency_file_path);
+			println!("Dependency File Path: {}", path.display());
 		}
 
 		// let serialized = module.serialize().unwrap();
