@@ -5,6 +5,7 @@ extern crate slang_sys as sys;
 extern crate std;
 
 pub mod reflect;
+pub mod helper;
 
 #[cfg(feature = "preprocess")]
 mod preprocess;
