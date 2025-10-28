@@ -32,6 +32,23 @@ pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
 	(module_name, imports)
 }
 
+pub fn get_module_name(content: &str) -> Option<String> {
+	for line in content.lines().replace_comments() {
+		let line = line.as_ref().trim();
+
+		if line.is_empty() {
+			continue;
+		}
+
+		if line.starts_with("module") {
+			if let Some(name) = parse_module(line) {
+				return Some(name);
+			}
+		}
+	}
+	None
+}
+
 fn parse_module(line: &str) -> Option<String> {
 	let trimmed = line.trim();
 
