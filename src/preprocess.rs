@@ -14,7 +14,6 @@ struct Preprocessor {
 
 impl Preprocessor {
 	fn new() -> Self {
-		std::println!("compile regex");
 		Self {
 			module: Regex::new(r"^\s*module\s+([a-zA-Z_]\w*)\s*;").unwrap(),
 			import: Regex::new(r#"import\s+(?:"([^"]+)"|(\w[\w.]*))\s*;"#).unwrap(),
