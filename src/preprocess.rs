@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 struct Preprocessor {
-	comment_re: Regex,
 	module: Regex,
 	import: Regex,
 }
@@ -16,7 +15,6 @@ struct Preprocessor {
 impl Preprocessor {
 	fn new() -> Self {
 		Self {
-			comment_re: Regex::new(r"//.*|/\*.*?\*/").unwrap(),
 			module: Regex::new(r"^\s*module\s+([a-zA-Z_]\w*)\s*;").unwrap(),
 			import: Regex::new(r#"import\s+(?:"([^"]+)"|(\w[\w.]*))\s*;"#).unwrap(),
 		}
@@ -28,7 +26,7 @@ impl Preprocessor {
 		let mut module_name = None;
 		let mut imports = Vec::new();
 
-		for line in lines.replace_comments() {
+		for line in lines {
 			if module_name.is_none() {
 				if let Some(caps) = self.module.captures(&line) {
 					module_name = Some(caps[1].to_string());

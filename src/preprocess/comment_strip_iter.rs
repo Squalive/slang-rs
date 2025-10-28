@@ -65,6 +65,7 @@ impl<'a> Iterator for CommentReplaceIter<'a> {
 								' ',
 								line_in.len() - marker.start() - section_start,
 							));
+
 							return Some(Cow::Owned(output));
 						}
 						// only possible in None or Block state
