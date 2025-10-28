@@ -14,6 +14,7 @@ struct Preprocessor {
 
 impl Preprocessor {
 	fn new() -> Self {
+		std::println!("compile regex");
 		Self {
 			module: Regex::new(r"^\s*module\s+([a-zA-Z_]\w*)\s*;").unwrap(),
 			import: Regex::new(r#"import\s+(?:"([^"]+)"|(\w[\w.]*))\s*;"#).unwrap(),
@@ -26,7 +27,7 @@ impl Preprocessor {
 		let mut module_name = None;
 		let mut imports = Vec::new();
 
-		for line in lines {
+		for line in lines.replace_comments() {
 			if module_name.is_none() {
 				if let Some(caps) = self.module.captures(&line) {
 					module_name = Some(caps[1].to_string());
