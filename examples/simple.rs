@@ -61,9 +61,10 @@ fn main() {
 
 	let session = global_session.create_session(&session_desc).unwrap();
 	{
-		// let module = session.load_module("extest").unwrap();
-		let test_str = include_str!("test.slang");
-		let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
+		let module = session.load_module("examples/test").unwrap();
+		let _module = session.load_module("examples/test2").unwrap();
+		// let test_str = include_str!("test.slang");
+		// let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
 
 		for dependency_file_path in module.dependency_file_paths() {
 			let path = Path::new(dependency_file_path);

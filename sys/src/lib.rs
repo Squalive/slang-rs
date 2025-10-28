@@ -5,7 +5,6 @@ use std::ffi::{c_char, c_void};
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-
 macro_rules! fp {
     ( ($($pn:ident: $pt:ty),*) ) => {
 		unsafe extern "C" fn(*mut c_void, $($pn: $pt),*)

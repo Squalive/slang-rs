@@ -3,9 +3,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use comment_strip_iter::CommentReplaceExt;
-use std::path::PathBuf;
 
-pub fn preprocess(content: &str) -> (Option<String>, Vec<PathBuf>) {
+pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
 	let mut module_name = None;
 	let mut imports = Vec::new();
 
@@ -78,7 +77,7 @@ fn parse_module(line: &str) -> Option<String> {
 	}
 }
 
-fn parse_import(line: &str) -> Option<PathBuf> {
+fn parse_import(line: &str) -> Option<String> {
 	let trimmed = line.trim();
 
 	// Check if line starts with "import" followed by whitespace
@@ -101,6 +100,9 @@ fn parse_import(line: &str) -> Option<PathBuf> {
 		let mut chars = after_import[1..].chars(); // Skip the opening quote
 
 		while let Some(ch) = chars.next() {
+			if ch == '/' {
+				return None;
+			}
 			if ch == '"' {
 				// Found closing quote
 				break;
@@ -108,7 +110,7 @@ fn parse_import(line: &str) -> Option<PathBuf> {
 			path.push(ch);
 		}
 
-		Some(PathBuf::from(path))
+		Some(path)
 	} else {
 		// Dot-separated identifier: import some.module.name
 		let mut identifier = String::new();
@@ -116,6 +118,9 @@ fn parse_import(line: &str) -> Option<PathBuf> {
 
 		// Parse the entire identifier (until semicolon or end)
 		while let Some(ch) = chars.next() {
+			if ch == '.' {
+				return None;
+			}
 			if ch == ';' || ch.is_whitespace() {
 				break;
 			}
@@ -123,13 +128,14 @@ fn parse_import(line: &str) -> Option<PathBuf> {
 		}
 
 		// Convert dot-separated identifier to path
-		Some(identifier.split('.').collect())
+		Some(identifier)
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use alloc::string::ToString;
 	use alloc::vec;
 
 	#[test]
@@ -138,17 +144,17 @@ mod tests {
 module test;
 
 import common;
-import "utils/math";
-import utils.math;
+import "math";
+import math;
 		"#;
 		let (module_name, imports) = preprocess(content);
 		assert_eq!(module_name, Some("test".into()));
 		assert_eq!(
 			imports,
 			vec![
-				PathBuf::from("common"),
-				"utils/math".into(),
-				"utils/math".into(),
+				"common".to_string(),
+				"math".to_string(),
+				"math".to_string(),
 			],
 		);
 	}
@@ -166,7 +172,7 @@ import utils.math;
 		assert_eq!(
 			imports,
 			vec![
-				PathBuf::from("test")
+				"test".to_string()
 			]
 		);
 	}
