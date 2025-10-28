@@ -259,17 +259,32 @@ unsafe impl Interface for Session {
 	const UUID: Uuid = uuid(0x67618701, 0xd116, 0x468f, [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d]);
 }
 
+macro_rules! into_module {
+    ($module:ident, $diagnostics:ident) => {
+		match Unknown::new_with_ref($module) {
+			Ok(u) => {
+				if let Ok(diagnostics) = Unknown::new_with_ref($diagnostics) {
+					tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
+				}
+				Ok(Module::new(u))
+			}
+			Err(err) => {
+				if let Ok(diagnostics) = Unknown::new_with_ref($diagnostics) {
+					tracing::error!("{}", Blob(diagnostics).as_str().unwrap());
+				}
+				Err(err)
+			}
+		}
+	};
+}
+
 impl Session {
 	/** Load a module as it would be by code using `import`. */
 	pub fn load_module(&self, module_name: &str) -> Result<Module<'_>> {
 		let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
 		let mut out_diagnostics = null_mut();
 		let module = vcall!(self, loadModule(module_name.as_ptr(), &mut out_diagnostics));
-		if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
-			tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
-		}
-		let module = Module::new(Unknown::new_with_ref(module)?);
-		Ok(module)
+		into_module!(module, out_diagnostics)
 	}
 
 	/** Load a module from a Slang module blob.*/
@@ -284,11 +299,7 @@ impl Session {
 		let blob = Com::new_blob(blob).into_unknown();
 		let mut out_diagnostics = null_mut();
 		let module = vcall!(self, loadModuleFromIRBlob(module_name.as_ptr(), path.as_ptr(), blob.0.as_ptr().cast(), &mut out_diagnostics));
-		if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
-			tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
-		}
-		let module = Module::new(Unknown::new_with_ref(module)?);
-		Ok(module)
+		into_module!(module, out_diagnostics)
 	}
 
 	/** Load a module from a string.*/
@@ -303,11 +314,7 @@ impl Session {
 		let source = CString::new(source).map_err(|_| Error::Unknown)?;
 		let mut out_diagnostics = null_mut();
 		let module = vcall!(self, loadModuleFromSourceString(module_name.as_ptr(), path.as_ptr(), source.as_ptr(), &mut out_diagnostics));
-		if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
-			tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
-		}
-		let module = Module::new(Unknown::new_with_ref(module)?);
-		Ok(module)
+		into_module!(module, out_diagnostics)
 	}
 
 	pub fn load_module_from_source(
@@ -321,11 +328,7 @@ impl Session {
 		let source = Com::new_blob(source).into_unknown();
 		let mut out_diagnostics = null_mut();
 		let module = vcall!(self, loadModuleFromSource(module_name.as_ptr(), path.as_ptr(), source.0.as_ptr().cast(), &mut out_diagnostics));
-		if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
-			tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
-		}
-		let module = Module::new(Unknown::new_with_ref(module)?);
-		Ok(module)
+		into_module!(module, out_diagnostics)
 	}
 
 	pub fn loaded_module_count(&self) -> usize {
