@@ -21,7 +21,7 @@ impl Preprocessor {
 	}
 
 	fn preprocess(&self, content: &str) -> (Option<String>, Vec<PathBuf>) {
-		let mut lines = content.lines();
+		let lines = content.lines();
 
 		let mut module_name = None;
 		let mut imports = Vec::new();
