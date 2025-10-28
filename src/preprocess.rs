@@ -1,63 +1,130 @@
 ﻿mod comment_strip_iter;
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use comment_strip_iter::CommentReplaceExt;
-use regex::Regex;
 use std::path::PathBuf;
-use std::sync::LazyLock;
-
-struct Preprocessor {
-	module: Regex,
-	import: Regex,
-}
-
-impl Preprocessor {
-	fn new() -> Self {
-		Self {
-			module: Regex::new(r"^\s*module\s+([a-zA-Z_]\w*)\s*;").unwrap(),
-			import: Regex::new(r#"import\s+(?:"([^"]+)"|(\w[\w.]*))\s*;"#).unwrap(),
-		}
-	}
-
-	fn preprocess(&self, content: &str) -> (Option<String>, Vec<PathBuf>) {
-		let lines = content.lines();
-
-		let mut module_name = None;
-		let mut imports = Vec::new();
-
-		for line in lines.replace_comments() {
-			if module_name.is_none() {
-				if let Some(caps) = self.module.captures(&line) {
-					module_name = Some(caps[1].to_string());
-				}
-			}
-			if let Some(cap) = self.import.captures(&line) {
-				if let Some(matched) = cap.get(1).or_else(|| cap.get(2)) {
-					let raw_path = matched.as_str();
-					let path = if cap.get(1).is_some() {
-						PathBuf::from(raw_path)
-					} else {
-						let mut path = PathBuf::new();
-						let parts = raw_path.split('.');
-						for part in parts {
-							path.push(part);
-						}
-						path
-					};
-					imports.push(path);
-				}
-			}
-		}
-
-		(module_name, imports)
-	}
-}
-
-static PREPROCESSOR: LazyLock<Preprocessor> = LazyLock::new(Preprocessor::new);
 
 pub fn preprocess(content: &str) -> (Option<String>, Vec<PathBuf>) {
-	PREPROCESSOR.preprocess(content)
+	let mut module_name = None;
+	let mut imports = Vec::new();
+
+	for line in content.lines().replace_comments() {
+		let line = line.as_ref().trim();
+
+		if line.is_empty() {
+			continue;
+		}
+
+		if module_name.is_none() && line.starts_with("module") {
+			if let Some(name) = parse_module(line) {
+				module_name = Some(name);
+				continue;
+			}
+		}
+
+		if line.starts_with("import") {
+			if let Some(path) = parse_import(line) {
+				imports.push(path);
+			}
+		}
+	}
+
+	(module_name, imports)
+}
+
+fn parse_module(line: &str) -> Option<String> {
+	let trimmed = line.trim();
+
+	// Check if line starts with "module" followed by whitespace
+	if !trimmed.starts_with("module") {
+		return None;
+	}
+
+	let after_module = &trimmed[6..]; // Skip "module"
+	let after_module = after_module.trim_start();
+
+	if after_module.is_empty() {
+		return None;
+	}
+
+	// Parse identifier until we hit whitespace or semicolon
+	let mut identifier = String::new();
+	for ch in after_module.chars() {
+		if ch.is_whitespace() || ch == ';' {
+			break;
+		}
+		if identifier.is_empty() {
+			// First character must be alphabetic or underscore
+			if ch.is_ascii_alphabetic() || ch == '_' {
+				identifier.push(ch);
+			} else {
+				return None;
+			}
+		} else {
+			// Subsequent characters can be alphanumeric or underscore
+			if ch.is_ascii_alphanumeric() || ch == '_' {
+				identifier.push(ch);
+			} else {
+				break;
+			}
+		}
+	}
+
+	if identifier.is_empty() {
+		None
+	} else {
+		Some(identifier)
+	}
+}
+
+fn parse_import(line: &str) -> Option<PathBuf> {
+	let trimmed = line.trim();
+
+	// Check if line starts with "import" followed by whitespace
+	if !trimmed.starts_with("import") {
+		return None;
+	}
+
+	let after_import = &trimmed[6..]; // Skip "import"
+	let after_import = after_import.trim_start();
+
+	if after_import.is_empty() {
+		return None;
+	}
+
+	let next_char = after_import.chars().next()?;
+
+	if next_char == '"' {
+		// Quoted path: import "path/to/file"
+		let mut path = String::new();
+		let mut chars = after_import[1..].chars(); // Skip the opening quote
+
+		while let Some(ch) = chars.next() {
+			if ch == '"' {
+				// Found closing quote
+				break;
+			}
+			path.push(ch);
+		}
+
+		Some(PathBuf::from(path))
+	} else {
+		// Dot-separated identifier: import some.module.name
+		let mut identifier = String::new();
+		let mut chars = after_import.chars();
+
+		// Parse the entire identifier (until semicolon or end)
+		while let Some(ch) = chars.next() {
+			if ch == ';' || ch.is_whitespace() {
+				break;
+			}
+			identifier.push(ch);
+		}
+
+		// Convert dot-separated identifier to path
+		Some(identifier.split('.').collect())
+	}
 }
 
 #[cfg(test)]

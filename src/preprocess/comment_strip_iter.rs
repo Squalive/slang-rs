@@ -6,9 +6,7 @@ use once_cell::sync::Lazy;
 
 // All patterns we need to match
 static PATTERNS: &[&str] = &["//", "/*", "*/", "\""];
-static AC: Lazy<AhoCorasick> = Lazy::new(|| {
-	AhoCorasick::new(PATTERNS).expect("Failed to build AhoCorasick")
-});
+static AC: Lazy<AhoCorasick> = Lazy::new(|| AhoCorasick::new(PATTERNS).expect("Failed to build AhoCorasick"));
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum CommentState {
