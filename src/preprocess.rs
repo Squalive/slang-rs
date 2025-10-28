@@ -1,5 +1,8 @@
-﻿use alloc::string::{String, ToString};
+﻿mod comment_strip_iter;
+
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use comment_strip_iter::CommentReplaceExt;
 use regex::Regex;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -20,33 +23,32 @@ impl Preprocessor {
 	}
 
 	fn preprocess(&self, content: &str) -> (Option<String>, Vec<PathBuf>) {
-		// Remove comments first
-		let clean_content = self.comment_re.replace_all(content, "");
+		let mut lines = content.lines();
 
-		let module_name = 'module: {
-			for line in clean_content.lines() {
-				if let Some(caps) = self.module.captures(line) {
-					break 'module Some(caps[1].to_string());
+		let mut module_name = None;
+		let mut imports = Vec::new();
+
+		for line in lines.replace_comments() {
+			if module_name.is_none() {
+				if let Some(caps) = self.module.captures(&line) {
+					module_name = Some(caps[1].to_string());
 				}
 			}
-			None
-		};
-
-		let mut imports = Vec::new();
-		for cap in self.import.captures_iter(&clean_content) {
-			if let Some(matched) = cap.get(1).or_else(|| cap.get(2)) {
-				let raw_path = matched.as_str();
-				let path = if cap.get(1).is_some() {
-					PathBuf::from(raw_path)
-				} else {
-					let mut path = PathBuf::new();
-					let parts = raw_path.split('.');
-					for part in parts {
-						path.push(part);
-					}
-					path
-				};
-				imports.push(path);
+			if let Some(cap) = self.import.captures(&line) {
+				if let Some(matched) = cap.get(1).or_else(|| cap.get(2)) {
+					let raw_path = matched.as_str();
+					let path = if cap.get(1).is_some() {
+						PathBuf::from(raw_path)
+					} else {
+						let mut path = PathBuf::new();
+						let parts = raw_path.split('.');
+						for part in parts {
+							path.push(part);
+						}
+						path
+					};
+					imports.push(path);
+				}
 			}
 		}
 
