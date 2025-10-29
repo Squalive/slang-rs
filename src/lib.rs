@@ -14,7 +14,7 @@ mod error;
 
 pub use error::*;
 #[cfg(feature = "preprocess")]
-pub use preprocess::{get_module_name, preprocess};
+pub use preprocess::{get_file_type, preprocess};
 pub use sys::{
 	SlangCompileTarget as CompileTarget,
 	SlangDebugInfoLevel as DebugInfoLevel,

@@ -1,6 +1,6 @@
 module test2;
 
-import common;
+import "utils/common";
 
 struct Yippe {
     Texture2D tex;

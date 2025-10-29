@@ -61,8 +61,13 @@ fn main() {
 
 	let session = global_session.create_session(&session_desc).unwrap();
 	{
+		session.load_module_from_source_string(
+			"common",
+			"examples/utils/common",
+			include_str!("utils/common.slang"),
+		).unwrap();
 		let module = session.load_module("examples/test").unwrap();
-		let _module = session.load_module("examples/test2").unwrap();
+		// let _module = session.load_module("examples/test2").unwrap();
 		// let test_str = include_str!("test.slang");
 		// let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
 

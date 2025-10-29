@@ -10,54 +10,57 @@ pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
 
 	for line in content.lines().replace_comments() {
 		let line = line.as_ref().trim();
-
 		if line.is_empty() {
 			continue;
 		}
 
-		if module_name.is_none() && line.starts_with("module") {
+		if module_name.is_none() {
 			if let Some(name) = parse_module(line) {
 				module_name = Some(name);
 				continue;
 			}
 		}
 
-		if line.starts_with("import") {
-			if let Some(path) = parse_import(line) {
-				imports.push(path);
-			}
+		if let Some(path) = parse_import(line) {
+			imports.push(path);
 		}
 	}
 
 	(module_name, imports)
 }
 
-pub fn get_module_name(content: &str) -> Option<String> {
+pub enum FileType {
+	Code,
+	Module(String),
+	IncludeDependencies,
+}
+
+pub fn get_file_type(content: &str) -> FileType {
 	for line in content.lines().replace_comments() {
 		let line = line.as_ref().trim();
-
 		if line.is_empty() {
 			continue;
 		}
 
-		if line.starts_with("module") {
-			if let Some(name) = parse_module(line) {
-				return Some(name);
-			}
+		if let Some(name) = parse_module(line) {
+			return FileType::Module(name);
+		}
+
+		if line.starts_with("implementing") {
+			return FileType::IncludeDependencies;
 		}
 	}
-	None
+
+	FileType::Code
 }
 
 fn parse_module(line: &str) -> Option<String> {
-	let trimmed = line.trim();
-
 	// Check if line starts with "module" followed by whitespace
-	if !trimmed.starts_with("module") {
+	if !line.starts_with("module") {
 		return None;
 	}
 
-	let after_module = &trimmed[6..]; // Skip "module"
+	let after_module = &line[6..]; // Skip "module"
 	let after_module = after_module.trim_start();
 
 	if after_module.is_empty() {
@@ -95,14 +98,12 @@ fn parse_module(line: &str) -> Option<String> {
 }
 
 fn parse_import(line: &str) -> Option<String> {
-	let trimmed = line.trim();
-
 	// Check if line starts with "import" followed by whitespace
-	if !trimmed.starts_with("import") {
+	if !line.starts_with("import") {
 		return None;
 	}
 
-	let after_import = &trimmed[6..]; // Skip "import"
+	let after_import = &line[6..]; // Skip "import"
 	let after_import = after_import.trim_start();
 
 	if after_import.is_empty() {
