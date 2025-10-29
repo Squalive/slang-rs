@@ -29,6 +29,7 @@ pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
 	(module_name, imports)
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum FileType {
 	Code,
 	Module(String),
@@ -193,5 +194,13 @@ import math;
 				"test".to_string()
 			]
 		);
+	}
+
+	#[test]
+	fn file_type_test() {
+		let content = r#"implementing test;"#;
+
+		let ty = get_file_type(content);
+		assert_eq!(ty, FileType::IncludeDependencies);
 	}
 }
