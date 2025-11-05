@@ -653,8 +653,9 @@ impl<'s> Module<'s> {
             self,
             findEntryPointByName(name.as_ptr(), &mut out_entry_point)
         )?;
-        let entry_point = EntryPoint(Unknown::new_with_ref(out_entry_point)?);
-        Ok(entry_point)
+        Ok(EntryPoint(ComponentType(Unknown::new_with_ref(
+            out_entry_point,
+        )?)))
     }
 
     /// Get number of entry points defined in the module. An entry point defined in a module
@@ -669,7 +670,9 @@ impl<'s> Module<'s> {
     pub fn get_entry_point(&self, index: usize) -> Result<EntryPoint> {
         let mut out_entry_point = null_mut();
         vcall_maybe!(self, getDefinedEntryPoint(index as _, &mut out_entry_point))?;
-        Ok(EntryPoint(Unknown::new_with_ref(out_entry_point)?))
+        Ok(EntryPoint(ComponentType(Unknown::new_with_ref(
+            out_entry_point,
+        )?)))
     }
 
     /// Returns a iterator over the entry points defined in this module
