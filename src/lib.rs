@@ -29,7 +29,6 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 use alloc::borrow::Cow;
 use core::fmt::Debug;
-use core::marker::PhantomData;
 use core::ptr::{NonNull, null_mut};
 use core::str::Utf8Error;
 use std::ffi::{CStr, CString, c_void};
@@ -624,11 +623,8 @@ unsafe impl Downcast<ComponentType> for Module<'_> {
 }
 
 impl<'s> Module<'s> {
-    fn new(base: ComponentType, session: Cow<'s, Session>) -> Self {
-        Self {
-            base,
-            _session: session.into(),
-        }
+    fn new(base: ComponentType, _session: Cow<'s, Session>) -> Self {
+        Self { base, _session }
     }
 
     pub fn into_owned(self) -> Module<'static> {
@@ -688,9 +684,9 @@ impl<'s> Module<'s> {
     }
 
     /// Write the serialized representation of this module to a file.
-    pub fn write_to_file(&self, file_name: &Path) -> Result<()> {
-        let file_name =
-            CString::new(file_name.to_str().ok_or(Error::Unknown)?).map_err(|_| Error::Unknown)?;
+    pub fn write_to_file<P: AsRef<Path>>(&self, file_name: P) -> Result<()> {
+        let file_name = CString::new(file_name.as_ref().to_str().ok_or(Error::Unknown)?)
+            .map_err(|_| Error::Unknown)?;
         vcall_maybe!(self, writeToFile(file_name.as_ptr()))
     }
 

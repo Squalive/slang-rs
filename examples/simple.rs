@@ -47,25 +47,30 @@ fn main() {
         slang::TargetDesc::default().format(slang::CompileTarget::Glsl),
         slang::TargetDesc::default().format(slang::CompileTarget::Wgsl),
     ];
-    // let search_paths = [c"examples".as_ptr()];
 
     let filesystem = Filesystem;
 
     let session_desc = slang::SessionDesc::default()
         .targets(&targets)
-        // .search_paths(&search_paths)
         .options(&session_options)
         .file_system(filesystem);
 
     let session = global_session.create_session(&session_desc).unwrap();
     {
-        session
-            .load_module_from_source_string(
+        let common = session
+            .load_module_from_ir_blob(
                 "common",
                 "examples/utils/common",
-                include_str!("utils/common.slang"),
+                include_bytes!("common.slang-module").as_slice(),
             )
             .unwrap();
+
+        // let common = session.load_module("examples/common").unwrap();
+
+        // common
+        //     .write_to_file("examples/common.slang-module")
+        //     .unwrap();
+
         let module = session.load_module("examples/test").unwrap();
         // let _module = session.load_module("examples/test2").unwrap();
         // let test_str = include_str!("test.slang");
@@ -76,8 +81,7 @@ fn main() {
             println!("Dependency File Path: {}", path.display());
         }
 
-        // let serialized = module.serialize().unwrap();
-        // std::fs::write("examples/test.slang-module", serialized.as_slice()).unwrap();
+        module.write_to_file("examples/test.slang-module").unwrap();
 
         let entry_point = module.find_entry_point_by_name("main").unwrap();
 
