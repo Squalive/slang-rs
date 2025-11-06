@@ -57,13 +57,6 @@ unsafe trait Interface: Sized {
     }
 }
 
-/// # Safety
-///
-/// [`T`] must be derived from [`Self`] in c++
-pub unsafe trait Downcast<T> {
-    fn downcast(&self) -> &T;
-}
-
 macro_rules! vcall {
     ($self:expr, $method:ident($($args:expr),*)) => {
 		unsafe { ($self.vtable().$method)($self.as_raw(), $($args),*) }
@@ -593,9 +586,9 @@ unsafe impl Interface for EntryPoint {
     );
 }
 
-unsafe impl Downcast<ComponentType> for EntryPoint {
-    fn downcast(&self) -> &ComponentType {
-        &self.0
+impl From<EntryPoint> for ComponentType {
+    fn from(value: EntryPoint) -> Self {
+        value.0
     }
 }
 
@@ -616,9 +609,9 @@ unsafe impl Interface for Module<'_> {
     );
 }
 
-unsafe impl Downcast<ComponentType> for Module<'_> {
-    fn downcast(&self) -> &ComponentType {
-        &self.base
+impl From<Module<'_>> for ComponentType {
+    fn from(value: Module<'_>) -> Self {
+        value.base
     }
 }
 
