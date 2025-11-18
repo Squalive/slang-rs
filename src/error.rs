@@ -2,8 +2,6 @@ use crate::Blob;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Invalid pointer")]
-    InvalidPtr,
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error("Failed with code: {0}")]

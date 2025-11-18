@@ -83,10 +83,15 @@ macro_rules! vcall_maybe_diagnostics {
 			let result = vcall!($self, $method($($args),* , &mut out_diagnostics));
 			if result >= 0 {
 				Ok(())
-			} else if !out_diagnostics.is_null() {
-				Err(Error::Blob(Blob(Unknown::new_with_ref(out_diagnostics).unwrap())))
 			} else {
-				Err(Error::Code(result))
+			    match Unknown::new_with_ref(out_diagnostics) {
+					Some(diagnostics) => {
+					    Err(Error::Blob(Blob(diagnostics)))
+					}
+					None => {
+					    Err(Error::Code(result))
+					}
+				}
 			}
 		}
 	};
@@ -133,16 +138,14 @@ impl Drop for Unknown {
 }
 
 impl Unknown {
-    fn new<T>(ptr: *mut T) -> Result<Self> {
-        NonNull::new(ptr)
-            .map(|p| Self(p.cast()))
-            .ok_or(Error::InvalidPtr)
+    fn new<T>(ptr: *mut T) -> Option<Self> {
+        NonNull::new(ptr).map(|p| Self(p.cast()))
     }
 
-    fn new_with_ref<T>(ptr: *mut T) -> Result<Self> {
+    fn new_with_ref<T>(ptr: *mut T) -> Option<Self> {
         let unknown = Self::new(ptr)?;
         vcall!(unknown, ISlangUnknown_addRef());
-        Ok(unknown)
+        Some(unknown)
     }
 }
 
@@ -245,8 +248,9 @@ unsafe impl Interface for GlobalSession {
 impl GlobalSession {
     pub fn new() -> Result<Self> {
         let mut ptr = null_mut();
-        unsafe { sys::slang_createGlobalSession(sys::SLANG_API_VERSION as _, &mut ptr) };
-        Ok(Self(Unknown::new(ptr)?))
+        let err_code =
+            unsafe { sys::slang_createGlobalSession(sys::SLANG_API_VERSION as _, &mut ptr) };
+        Unknown::new(ptr).map(Self).ok_or(Error::Code(err_code))
     }
 
     pub fn create_session(&self, desc: &SessionDesc) -> Result<Session> {
@@ -260,7 +264,7 @@ impl GlobalSession {
         vcall_maybe!(self, createSession(&raw_desc, &mut ptr))?;
 
         // SAFETY: We checked above with maybe
-        Ok(Session(Unknown::new(ptr)?))
+        Ok(Unknown::new(ptr).map(Session).unwrap())
     }
 
     pub fn find_profile(&self, name: &str) -> ProfileId {
@@ -284,20 +288,22 @@ unsafe impl Interface for Session {
 }
 
 macro_rules! into_module {
-    ($self:ident, $module:ident, $diagnostics:ident) => {
+    ($self:ident, $module:ident, $err_code:expr, $diagnostics:ident) => {
         match Unknown::new_with_ref($module) {
-            Ok(u) => {
-                if let Ok(diagnostics) = Unknown::new_with_ref($diagnostics) {
+            Some(u) => {
+                if let Some(diagnostics) = Unknown::new_with_ref($diagnostics) {
                     tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
                 }
                 Ok(Module::new(ComponentType(u), Cow::Borrowed($self)))
             }
-            Err(err) => {
-                if let Ok(diagnostics) = Unknown::new_with_ref($diagnostics) {
-                    tracing::error!("{}", Blob(diagnostics).as_str().unwrap());
+            None => match Unknown::new_with_ref($diagnostics) {
+                Some(diagnostics) => {
+                    let blob = Blob(diagnostics);
+                    tracing::error!("{}", blob.as_str().unwrap());
+                    Err(Error::Blob(blob))
                 }
-                Err(err)
-            }
+                None => Err(Error::Code($err_code)),
+            },
         }
     };
 }
@@ -308,7 +314,7 @@ impl Session {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let mut out_diagnostics = null_mut();
         let module = vcall!(self, loadModule(module_name.as_ptr(), &mut out_diagnostics));
-        into_module!(self, module, out_diagnostics)
+        into_module!(self, module, -1, out_diagnostics)
     }
 
     /** Load a module from a Slang module blob.*/
@@ -331,7 +337,7 @@ impl Session {
                 &mut out_diagnostics
             )
         );
-        into_module!(self, module, out_diagnostics)
+        into_module!(self, module, -1, out_diagnostics)
     }
 
     /** Load a module from a string.*/
@@ -354,7 +360,7 @@ impl Session {
                 &mut out_diagnostics
             )
         );
-        into_module!(self, module, out_diagnostics)
+        into_module!(self, module, -1, out_diagnostics)
     }
 
     pub fn load_module_from_source(
@@ -376,7 +382,7 @@ impl Session {
                 &mut out_diagnostics
             )
         );
-        into_module!(self, module, out_diagnostics)
+        into_module!(self, module, -1, out_diagnostics)
     }
 
     pub fn loaded_module_count(&self) -> usize {
@@ -386,7 +392,7 @@ impl Session {
     pub fn get_loaded_module(&self, index: usize) -> Option<Module<'_>> {
         let module = vcall!(self, getLoadedModule(index as _));
         let module = Module::new(
-            ComponentType(Unknown::new_with_ref(module).ok()?),
+            ComponentType(Unknown::new_with_ref(module)?),
             Cow::Borrowed(self),
         );
         Some(module)
@@ -456,9 +462,9 @@ impl Session {
                 &mut composite_component_type
             )
         )?;
-        Ok(ComponentType(Unknown::new_with_ref(
-            composite_component_type,
-        )?))
+        Ok(ComponentType(
+            Unknown::new_with_ref(composite_component_type).unwrap(),
+        ))
     }
 }
 
@@ -520,7 +526,7 @@ impl ComponentType {
     pub fn layout(&self, target: i64) -> Result<&reflect::Shader> {
         let mut out_diagnostics = null_mut();
         let ptr = vcall!(self, getLayout(target, &mut out_diagnostics));
-        if let Ok(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
+        if let Some(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
             tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
         }
         Ok(unsafe { &*(ptr as *const reflect::Shader) })
@@ -546,15 +552,15 @@ impl ComponentType {
     pub fn link(&self) -> Result<ComponentType> {
         let mut out_linked_component_type = null_mut();
         vcall_maybe_diagnostics!(self, link(&mut out_linked_component_type))?;
-        Ok(ComponentType(Unknown::new_with_ref(
-            out_linked_component_type,
-        )?))
+        Ok(ComponentType(
+            Unknown::new_with_ref(out_linked_component_type).unwrap(),
+        ))
     }
 
     pub fn target_code(&self, target: i64) -> Result<Blob> {
         let mut code = null_mut();
         vcall_maybe_diagnostics!(self, getTargetCode(target, &mut code))?;
-        Ok(Blob(Unknown::new_with_ref(code)?))
+        Ok(Blob(Unknown::new_with_ref(code).unwrap()))
     }
 
     /** Get the compiled code for the entry point at `entryPointIndex` for the chosen `targetIndex`
@@ -570,7 +576,7 @@ impl ComponentType {
     pub fn entry_point_code(&self, index: i64, target: i64) -> Result<Blob> {
         let mut code = null_mut();
         vcall_maybe_diagnostics!(self, getEntryPointCode(index, target, &mut code))?;
-        Ok(Blob(Unknown::new_with_ref(code)?))
+        Ok(Blob(Unknown::new_with_ref(code).unwrap()))
     }
 }
 
@@ -644,9 +650,9 @@ impl<'s> Module<'s> {
             self,
             findEntryPointByName(name.as_ptr(), &mut out_entry_point)
         )?;
-        Ok(EntryPoint(ComponentType(Unknown::new_with_ref(
-            out_entry_point,
-        )?)))
+        Ok(EntryPoint(ComponentType(
+            Unknown::new_with_ref(out_entry_point).unwrap(),
+        )))
     }
 
     /// Get number of entry points defined in the module. An entry point defined in a module
@@ -661,9 +667,9 @@ impl<'s> Module<'s> {
     pub fn get_entry_point(&self, index: usize) -> Result<EntryPoint> {
         let mut out_entry_point = null_mut();
         vcall_maybe!(self, getDefinedEntryPoint(index as _, &mut out_entry_point))?;
-        Ok(EntryPoint(ComponentType(Unknown::new_with_ref(
-            out_entry_point,
-        )?)))
+        Ok(EntryPoint(ComponentType(
+            Unknown::new_with_ref(out_entry_point).unwrap(),
+        )))
     }
 
     /// Returns a iterator over the entry points defined in this module
@@ -675,7 +681,7 @@ impl<'s> Module<'s> {
     pub fn serialize(&self) -> Result<Blob> {
         let mut out = null_mut();
         vcall_maybe!(self, serialize(&mut out))?;
-        Ok(Blob(Unknown::new_with_ref(out)?))
+        Ok(Blob(Unknown::new_with_ref(out).unwrap()))
     }
 
     /// Write the serialized representation of this module to a file.
