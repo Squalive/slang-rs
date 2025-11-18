@@ -58,7 +58,7 @@ impl<'a> Iterator for CommentReplaceIter<'a> {
                     CommentState::Block(_) => {
                         // In block comment - replace with spaces
                         self.buffer
-                            .extend(std::iter::repeat(' ').take(start - last_end));
+                            .extend(core::iter::repeat_n(' ', start - last_end));
                     }
                     _ => {
                         // Not in block - keep content as-is
@@ -73,7 +73,7 @@ impl<'a> Iterator for CommentReplaceIter<'a> {
                 (CommentState::None, "//") => {
                     // Line comment - replace rest of line with spaces and return
                     self.buffer
-                        .extend(std::iter::repeat(' ').take(line.len() - start));
+                        .extend(core::iter::repeat_n(' ', line.len() - start));
                     self.state = current_state;
                     return Some(Cow::Owned(self.buffer.clone()));
                 }
@@ -139,7 +139,7 @@ impl<'a> Iterator for CommentReplaceIter<'a> {
             match current_state {
                 CommentState::Block(_) => {
                     self.buffer
-                        .extend(std::iter::repeat(' ').take(line.len() - last_end));
+                        .extend(core::iter::repeat_n(' ', line.len() - last_end));
                 }
                 _ => {
                     self.buffer.push_str(&line[last_end..]);
@@ -297,7 +297,7 @@ not commented
         let input = r#"text "string // with comment" text"#;
         let expected = r#"text "string // with comment" text"#;
         let result = input.lines().replace_comments().next().unwrap();
-        assert_eq!((&result).trim(), expected.trim());
+        assert_eq!(result.trim(), expected.trim());
     }
 
     #[test]
@@ -305,7 +305,7 @@ not commented
         let input = r#"/* "comment inside string" */"#;
         let expected = "                              ";
         let result = input.lines().replace_comments().next().unwrap();
-        assert_eq!((&result).trim(), expected.trim());
+        assert_eq!(result.trim(), expected.trim());
     }
 
     #[test]
@@ -328,7 +328,7 @@ not commented
         let input = "start /* unclosed comment";
         let expected = "start                       ";
         let result = input.lines().replace_comments().next().unwrap();
-        assert_eq!((&result).trim(), expected.trim());
+        assert_eq!(result.trim(), expected.trim());
     }
 
     #[test]

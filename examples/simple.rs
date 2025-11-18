@@ -1,4 +1,4 @@
-use slang::{Downcast, GlobalSession};
+use slang::GlobalSession;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -57,7 +57,7 @@ fn main() {
 
     let session = global_session.create_session(&session_desc).unwrap();
     {
-        let common = session
+        let _ = session
             .load_module_from_ir_blob(
                 "common",
                 "examples/utils/common",
@@ -86,10 +86,7 @@ fn main() {
         let entry_point = module.find_entry_point_by_name("main").unwrap();
 
         let program = session
-            .create_composite_component_type(&[
-                module.downcast().clone(),
-                entry_point.downcast().clone(),
-            ])
+            .create_composite_component_type(&[module.into(), entry_point.into()])
             .unwrap();
 
         let linked_program = program.link().unwrap();

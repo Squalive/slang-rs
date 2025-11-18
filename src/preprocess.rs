@@ -4,9 +4,16 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use comment_strip_iter::CommentReplaceExt;
 
-pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
+pub struct PreprocessedShader {
+    pub module_name: Option<String>,
+    pub imports: Vec<String>,
+    pub includes: Vec<String>,
+}
+
+pub fn preprocess(content: &str) -> PreprocessedShader {
     let mut module_name = None;
     let mut imports = Vec::new();
+    let mut includes = Vec::new();
 
     for line in content.lines().replace_comments() {
         let line = line.as_ref().trim();
@@ -14,19 +21,27 @@ pub fn preprocess(content: &str) -> (Option<String>, Vec<String>) {
             continue;
         }
 
-        if module_name.is_none() {
-            if let Some(name) = parse_module(line) {
-                module_name = Some(name);
-                continue;
-            }
+        if module_name.is_none()
+            && let Some(name) = parse_module(line)
+        {
+            module_name = Some(name);
+            continue;
         }
 
         if let Some(path) = parse_import(line) {
             imports.push(path);
         }
+
+        if let Some(path) = parse_include(line) {
+            includes.push(path);
+        }
     }
 
-    (module_name, imports)
+    PreprocessedShader {
+        module_name,
+        imports,
+        includes,
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -116,9 +131,9 @@ fn parse_import(line: &str) -> Option<String> {
     if next_char == '"' {
         // Quoted path: import "path/to/file"
         let mut path = String::new();
-        let mut chars = after_import[1..].chars(); // Skip the opening quote
+        let chars = after_import[1..].chars(); // Skip the opening quote
 
-        while let Some(ch) = chars.next() {
+        for ch in chars {
             if ch == '/' {
                 return None;
             }
@@ -133,10 +148,10 @@ fn parse_import(line: &str) -> Option<String> {
     } else {
         // Dot-separated identifier: import some.module.name
         let mut identifier = String::new();
-        let mut chars = after_import.chars();
+        let chars = after_import.chars();
 
         // Parse the entire identifier (until semicolon or end)
-        while let Some(ch) = chars.next() {
+        for ch in chars {
             if ch == '.' {
                 return None;
             }
@@ -148,6 +163,45 @@ fn parse_import(line: &str) -> Option<String> {
 
         // Convert dot-separated identifier to path
         Some(identifier)
+    }
+}
+
+fn parse_include(line: &str) -> Option<String> {
+    const INCLUDE: &str = "__include";
+
+    if !line.starts_with(INCLUDE) {
+        return None;
+    }
+
+    let after_import = &line[INCLUDE.len() + 1..];
+    let after_import = after_import.trim_start();
+
+    if after_import.is_empty() {
+        return None;
+    }
+
+    let next_char = after_import.chars().next()?;
+
+    if next_char == '"' {
+        // Quoted path: __include "path/to/file";
+        let mut path = String::new();
+        let chars = after_import[1..].chars();
+
+        for ch in chars {
+            if ch == '/' {
+                return None;
+            }
+
+            if ch == '"' {
+                // Found closing quote
+                break;
+            }
+            path.push(ch);
+        }
+
+        Some(path)
+    } else {
+        None
     }
 }
 
@@ -166,10 +220,10 @@ import common;
 import "math";
 import math;
 		"#;
-        let (module_name, imports) = preprocess(content);
-        assert_eq!(module_name, Some("test".into()));
+        let shader = preprocess(content);
+        assert_eq!(shader.module_name, Some("test".into()));
         assert_eq!(
-            imports,
+            shader.imports,
             vec!["common".to_string(), "math".to_string(), "math".to_string(),],
         );
     }
@@ -178,13 +232,31 @@ import math;
     fn module_test() {
         let content = "module test;";
 
-        let (module_name, imports) = preprocess(content);
-        assert_eq!(module_name, Some("test".into()));
-        assert_eq!(imports.len(), 0);
+        let shader = preprocess(content);
+        assert_eq!(shader.module_name, Some("test".into()));
+        assert_eq!(shader.imports.len(), 0);
 
-        let (module_name, imports) = preprocess("import test;");
-        assert_eq!(module_name, None);
-        assert_eq!(imports, vec!["test".to_string()]);
+        let shader = preprocess("import test;");
+        assert_eq!(shader.module_name, None);
+        assert_eq!(shader.imports, vec!["test".to_string()]);
+    }
+
+    #[test]
+    fn comment_test() {
+        let content = r#"
+module test2;
+// module test2;
+
+import common;
+import "math";
+//import math;
+		"#;
+        let shader = preprocess(content);
+        assert_eq!(shader.module_name, Some("test2".into()));
+        assert_eq!(
+            shader.imports,
+            vec!["common".to_string(), "math".to_string()],
+        );
     }
 
     #[test]
