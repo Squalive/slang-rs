@@ -50,7 +50,7 @@ fn main() {
     let filesystem = Filesystem;
 
     let session_desc = slang::SessionDesc::default()
-        .targets(&targets)
+        // .targets(&targets)
         .options(&session_options)
         .file_system(filesystem);
 
@@ -71,7 +71,7 @@ fn main() {
         //     .unwrap();
         //
 
-        let _prelude = session
+        session
             .load_module_from_source_string(
                 "prelude",
                 "examples/prelude.slang",
@@ -90,7 +90,7 @@ fn main() {
         // let test_str = include_str!("test.slang");
         // let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
 
-        module.write_to_file("examples/test.slang-module").unwrap();
+        let _bytes = module.serialize().unwrap();
 
         for dependency_file_path in module.dependency_file_paths() {
             let path = Path::new(dependency_file_path);
