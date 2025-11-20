@@ -134,9 +134,6 @@ fn parse_import(line: &str) -> Option<String> {
         let chars = after_import[1..].chars(); // Skip the opening quote
 
         for ch in chars {
-            if ch == '/' {
-                return None;
-            }
             if ch == '"' {
                 // Found closing quote
                 break;
@@ -152,9 +149,6 @@ fn parse_import(line: &str) -> Option<String> {
 
         // Parse the entire identifier (until semicolon or end)
         for ch in chars {
-            if ch == '.' {
-                return None;
-            }
             if ch == ';' || ch.is_whitespace() {
                 break;
             }
@@ -188,10 +182,6 @@ fn parse_include(line: &str) -> Option<String> {
         let chars = after_import[1..].chars();
 
         for ch in chars {
-            if ch == '/' {
-                return None;
-            }
-
             if ch == '"' {
                 // Found closing quote
                 break;
@@ -265,5 +255,15 @@ import "math";
 
         let ty = get_file_type(content);
         assert_eq!(ty, FileType::IncludeDependencies);
+    }
+
+    #[test]
+    fn include_test() {
+        let content = r#"
+__include "prelude/mesh";
+            "#;
+
+        let shader = preprocess(content);
+        assert_eq!(shader.includes, vec!["prelude/mesh".to_string()]);
     }
 }
