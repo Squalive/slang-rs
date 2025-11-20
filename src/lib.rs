@@ -109,7 +109,7 @@ const fn uuid(data1: u32, data2: u16, data3: u16, data4: [u8; 8]) -> Uuid {
 #[repr(transparent)]
 pub struct Unknown(NonNull<c_void>);
 
-unsafe impl Sync for Session {}
+unsafe impl Sync for Unknown {}
 
 // SAFETY: Unknown ptr should guarantee this
 unsafe impl Send for Unknown {}
@@ -233,6 +233,7 @@ impl ProfileId {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct GlobalSession(Unknown);
 
 unsafe impl Interface for GlobalSession {

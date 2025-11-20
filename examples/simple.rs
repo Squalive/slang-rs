@@ -37,16 +37,15 @@ fn main() {
 
     let global_session = GlobalSession::new().unwrap();
 
-    let session_options =
-        slang::CompilerOptions::default().optimization(slang::OptimizationLevel::High);
+    let session_options = slang::CompilerOptions::default()
+        .optimization(slang::OptimizationLevel::High)
+        .emit_spirv_directly(true)
+        .floating_point_mode(slang::FloatingPointMode::Fast)
+        .vulkan_use_entry_point_name(true);
 
-    let targets = [
-        slang::TargetDesc::default()
-            .format(slang::CompileTarget::Spirv)
-            .profile(global_session.find_profile("spirv_1_5")),
-        slang::TargetDesc::default().format(slang::CompileTarget::Glsl),
-        slang::TargetDesc::default().format(slang::CompileTarget::Wgsl),
-    ];
+    let targets = [slang::TargetDesc::default()
+        .format(slang::CompileTarget::Spirv)
+        .profile(global_session.find_profile("spirv_1_5"))];
 
     let filesystem = Filesystem;
 
@@ -57,55 +56,70 @@ fn main() {
 
     let session = global_session.create_session(&session_desc).unwrap();
     {
-        let _ = session
-            .load_module_from_ir_blob(
-                "common",
-                "examples/utils/common",
-                include_bytes!("common.slang-module").as_slice(),
-            )
-            .unwrap();
+        // let _ = session
+        //     .load_module_from_ir_blob(
+        //         "common",
+        //         "examples/utils/common",
+        //         include_bytes!("common.slang-module").as_slice(),
+        //     )
+        //     .unwrap();
 
         // let common = session.load_module("examples/common").unwrap();
 
         // common
         //     .write_to_file("examples/common.slang-module")
         //     .unwrap();
+        //
 
-        let module = session.load_module("examples/test").unwrap();
+        let _prelude = session
+            .load_module_from_source_string(
+                "prelude",
+                "examples/prelude.slang",
+                include_str!("prelude.slang"),
+            )
+            .unwrap();
+
+        let module = session
+            .load_module_from_source_string(
+                "test",
+                "examples/test.slang",
+                include_str!("test.slang"),
+            )
+            .unwrap();
         // let _module = session.load_module("examples/test2").unwrap();
         // let test_str = include_str!("test.slang");
         // let module = session.load_module_from_source_string("test", "examples/test", test_str).unwrap();
+
+        module.write_to_file("examples/test.slang-module").unwrap();
 
         for dependency_file_path in module.dependency_file_paths() {
             let path = Path::new(dependency_file_path);
             println!("Dependency File Path: {}", path.display());
         }
 
-        module.write_to_file("examples/test.slang-module").unwrap();
+        // let entry_point = module.find_entry_point_by_name("main").unwrap();
 
-        let entry_point = module.find_entry_point_by_name("main").unwrap();
+        // let program = session
+        //     .create_composite_component_type(&[module.into(), entry_point.into()])
+        //     .unwrap();
 
-        let program = session
-            .create_composite_component_type(&[module.into(), entry_point.into()])
-            .unwrap();
+        // let linked_program = program.link().unwrap();
 
-        let linked_program = program.link().unwrap();
+        // // let reflect = linked_program.layout(0).unwrap();
+        // // let var = reflect.global_params_var_layout().unwrap();
+        // // print_var_layout(var);
+        // // validate_shader(reflect);
 
-        let reflect = linked_program.layout(0).unwrap();
-        let var = reflect.global_params_var_layout().unwrap();
-        print_var_layout(var);
-        validate_shader(reflect);
+        // std::fs::create_dir_all("examples/output").unwrap();
 
-        std::fs::create_dir_all("examples/output").unwrap();
+        // let spv = linked_program.entry_point_code(0, 0).unwrap();
+        // std::fs::write("examples/output/test.spv", spv.as_slice()).unwrap();
 
-        let spv = linked_program.entry_point_code(0, 0).unwrap();
-        std::fs::write("examples/output/test.spv", spv.as_slice()).unwrap();
+        // let glsl = linked_program.entry_point_code(0, 1).unwrap();
+        // std::fs::write("examples/output/test.comp", glsl.as_slice()).unwrap();
 
-        let glsl = linked_program.entry_point_code(0, 1).unwrap();
-        std::fs::write("examples/output/test.comp", glsl.as_slice()).unwrap();
-
-        let wgsl = linked_program.entry_point_code(0, 2).unwrap();
-        std::fs::write("examples/output/test.wgsl", wgsl.as_slice()).unwrap();
+        // let wgsl = linked_program.entry_point_code(0, 2).unwrap();
+        // std::fs::write("examples/output/test.wgsl", wgsl.as_slice()).unwrap();
     }
 }
 

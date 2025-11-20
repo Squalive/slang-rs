@@ -1,8 +1,4 @@
-
-
-implementing common;
-
-public void CallYippe() {}
+implementing prelude;
 
 public struct Mesh
 {
