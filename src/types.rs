@@ -4,7 +4,7 @@ pub use com::*;
 
 use crate::{
     CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, OptimizationLevel,
-    ProfileId, SourceLanguage, Stage,
+    ProfileId, SourceLanguage, Stage, reflect,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -215,4 +215,10 @@ impl<'a> TargetDesc<'a> {
         self.inner.compilerOptionEntryCount = options.options.len() as _;
         self
     }
+}
+
+#[derive(Clone)]
+pub enum SpecializeArgument<'a> {
+    Type(&'a reflect::Type),
+    Expr(&'a str),
 }

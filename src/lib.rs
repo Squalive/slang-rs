@@ -1,8 +1,5 @@
-#![no_std]
-
 extern crate alloc;
 extern crate slang_sys as sys;
-extern crate std;
 
 pub mod helper;
 pub mod reflect;
@@ -524,13 +521,56 @@ unsafe impl Interface for ComponentType {
 }
 
 impl ComponentType {
+    pub fn specialization_param_count(&self) -> usize {
+        vcall!(self, getSpecializationParamCount()) as usize
+    }
+
+    pub fn specialize(&self, arguments: &[SpecializeArgument]) -> Result<ComponentType> {
+        let mut c_string_exprs = Vec::new();
+
+        let args: Vec<_> = arguments
+            .iter()
+            .map(|arg| match arg {
+                SpecializeArgument::Type(ty) => sys::slang_SpecializationArg {
+                    kind: sys::slang_SpecializationArg_Kind::Type,
+                    __bindgen_anon_1: sys::slang_SpecializationArg__bindgen_ty_1 {
+                        type_: unsafe { ty.as_raw() } as _,
+                    },
+                },
+                SpecializeArgument::Expr(expr) => {
+                    let c_string = CString::new(*expr).unwrap();
+                    c_string_exprs.push(c_string);
+                    let c_string = c_string_exprs.last().unwrap().as_ptr();
+                    sys::slang_SpecializationArg {
+                        kind: sys::slang_SpecializationArg_Kind::Expr,
+                        __bindgen_anon_1: sys::slang_SpecializationArg__bindgen_ty_1 {
+                            expr: c_string,
+                        },
+                    }
+                }
+            })
+            .collect();
+
+        let arg_ptr = args.as_ptr();
+        let arg_count = args.len() as i64;
+
+        let mut out = null_mut();
+        vcall_maybe_diagnostics!(self, specialize(arg_ptr, arg_count, &mut out))?;
+        Ok(ComponentType(Unknown::new_with_ref(out).unwrap()))
+    }
+
     pub fn layout(&self, target: i64) -> Result<&reflect::Shader> {
         let mut out_diagnostics = null_mut();
         let ptr = vcall!(self, getLayout(target, &mut out_diagnostics));
-        if let Some(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
-            tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
+        if ptr.is_null() {
+            if let Some(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
+                Err(Error::Blob(Blob(diagnostics)))
+            } else {
+                Err(Error::Unknown)
+            }
+        } else {
+            Ok(unsafe { &*(ptr as *const reflect::Shader) })
         }
-        Ok(unsafe { &*(ptr as *const reflect::Shader) })
     }
 
     /** Link this component type against all of its unsatisfied dependencies.
@@ -601,6 +641,16 @@ impl From<EntryPoint> for ComponentType {
     }
 }
 
+impl EntryPoint {
+    pub fn specialization_param_count(&self) -> usize {
+        self.0.specialization_param_count()
+    }
+
+    pub fn specialize(&self, arguments: &[SpecializeArgument]) -> Result<Self> {
+        self.0.specialize(arguments).map(Self)
+    }
+}
+
 #[repr(C)]
 #[derive(Clone)]
 pub struct Module<'s> {
@@ -638,6 +688,10 @@ impl<'s> Module<'s> {
 
     pub fn clone_owned(&self) -> Module<'static> {
         self.clone().into_owned()
+    }
+
+    pub fn layout(&self, target: i64) -> Result<&reflect::Shader> {
+        self.base.layout(target)
     }
 
     /// Find and an entry point by name.

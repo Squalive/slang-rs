@@ -43,6 +43,11 @@ impl Shader {
         let name = CString::new(name).unwrap();
         rcall!(spReflection_findEntryPointByName(self, name.as_ptr()) as Option<&EntryPoint>)
     }
+
+    pub fn find_type_by_name(&self, name: &str) -> Option<&Type> {
+        let name = CString::new(name).unwrap();
+        rcall!(spReflection_FindTypeByName(self, name.as_ptr()) as Option<&Type>)
+    }
 }
 
 #[repr(transparent)]
@@ -152,12 +157,17 @@ impl VariableLayout {
 #[repr(transparent)]
 pub struct Type(sys::SlangReflectionType);
 
+use sys::spReflection_FindTypeByName;
 pub use ty::*;
 mod ty {
     use super::*;
     use crate::{ResourceAccess, ResourceShape};
 
     impl Type {
+        pub(crate) unsafe fn as_raw(&self) -> *const sys::SlangReflectionType {
+            self as *const _ as _
+        }
+
         pub(super) unsafe fn scalar_type(&self) -> crate::ScalarType {
             rcall!(spReflectionType_GetScalarType(self))
         }
