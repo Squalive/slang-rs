@@ -3,8 +3,8 @@ mod com;
 pub use com::*;
 
 use crate::{
-    CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, OptimizationLevel,
-    ProfileId, SourceLanguage, Stage, reflect,
+    CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, MatrixLayoutMode,
+    OptimizationLevel, ProfileId, SourceLanguage, Stage, reflect,
 };
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -34,6 +34,11 @@ impl Default for SessionDesc<'_> {
 }
 
 impl<'a> SessionDesc<'a> {
+    pub fn matrix_layout_mode(mut self, mode: MatrixLayoutMode) -> Self {
+        self.inner.defaultMatrixLayoutMode = mode;
+        self
+    }
+
     pub fn targets(mut self, targets: &'a [TargetDesc]) -> Self {
         self.inner.targets = targets.as_ptr() as _;
         self.inner.targetCount = targets.len() as _;
