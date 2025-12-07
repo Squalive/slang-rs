@@ -1,11 +1,10 @@
 use crate::{Blob, Interface, Result, Unknown, Uuid};
-use alloc::boxed::Box;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use core::ptr::NonNull;
-use core::ptr::null_mut;
-use std::ffi::{CStr, c_char, c_void};
-use std::path::Path;
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use core::ptr::{NonNull, null_mut};
+use std::{
+    ffi::{CStr, c_char, c_void},
+    path::Path,
+};
 
 #[repr(C)]
 pub struct RawCom<T> {
@@ -81,10 +80,11 @@ extern "C" fn slang_unknown_release<T: ISlangUnknown>(this: *mut sys::ISlangUnkn
     let com_ptr = this as *mut RawCom<T>;
     let com = unsafe { &mut *com_ptr };
     com.ref_count -= 1;
-    if com.ref_count == 0 {
+    let ref_count = com.ref_count;
+    if ref_count == 0 {
         drop(unsafe { Arc::from_raw(com_ptr) });
     }
-    com.ref_count
+    ref_count
 }
 
 impl<T: ISlangUnknown> Com<T> {
