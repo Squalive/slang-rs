@@ -39,7 +39,6 @@ fn main() {
 
     let session_options = slang::CompilerOptions::default()
         .optimization(slang::OptimizationLevel::High)
-        .emit_spirv_directly(true)
         .floating_point_mode(slang::FloatingPointMode::Fast)
         .vulkan_use_entry_point_name(true);
 

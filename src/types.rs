@@ -6,11 +6,8 @@ use crate::{
     CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, MatrixLayoutMode,
     OptimizationLevel, ProfileId, SourceLanguage, Stage, reflect,
 };
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-use core::marker::PhantomData;
-use core::mem::zeroed;
-use core::ptr::null;
+use alloc::{boxed::Box, vec::Vec};
+use core::{marker::PhantomData, mem::zeroed, ptr::null};
 use std::ffi::{CString, c_char};
 
 #[repr(C)]
@@ -184,6 +181,8 @@ impl CompilerOptions {
     option!(NoMangle, no_mangle(enable: i32 bool));
     option!(ValidateUniformity, validate_uniformity(enable: i32 bool));
     option!(BindlessSpaceIndex, bindless_space_index(index: i32 u32));
+
+    option!(Capability, capability(cap: &str));
 }
 
 #[repr(C)]
