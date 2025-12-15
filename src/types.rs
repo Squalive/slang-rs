@@ -71,6 +71,10 @@ pub struct CompilerOptions {
     options: Vec<sys::slang_CompilerOptionEntry>,
 }
 
+unsafe impl Send for CompilerOptions {}
+
+unsafe impl Sync for CompilerOptions {}
+
 impl CompilerOptions {
     fn push_ints(mut self, name: sys::slang_CompilerOptionName, i0: i32, i1: i32) -> Self {
         self.options.push(sys::slang_CompilerOptionEntry {
