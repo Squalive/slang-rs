@@ -176,7 +176,6 @@ impl CompilerOptions {
     option!(Obfuscate, obfuscate(enable: i32 bool));
     option!(VulkanUseEntryPointName, vulkan_use_entry_point_name(enable: i32 bool));
     option!(GLSLForceScalarLayout, glsl_force_scalar_layout(enable: i32 bool));
-    option!(EmitSpirvDirectly, emit_spirv_directly(enable: i32 bool));
 
     // Debugging
     option!(NoCodeGen, no_code_gen(enable: i32 bool));
@@ -184,6 +183,7 @@ impl CompilerOptions {
     // Experimental
     option!(NoMangle, no_mangle(enable: i32 bool));
     option!(ValidateUniformity, validate_uniformity(enable: i32 bool));
+    option!(BindlessSpaceIndex, bindless_space_index(index: i32 u32));
 }
 
 #[repr(C)]

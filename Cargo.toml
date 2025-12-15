@@ -16,6 +16,7 @@ aho-corasick = { version = "1.1.4" }
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+rspirv-reflect = { git = "https://github.com/Squalive/rspirv-reflect.git", default-features = false }
 
 [[example]]
 name = "simple"
@@ -23,4 +24,9 @@ required-features = []
 
 [[example]]
 name = "entry_point_specialization"
+required-features = []
+
+
+[[example]]
+name = "bindless"
 required-features = []

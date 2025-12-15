@@ -11,7 +11,9 @@ fn main() {
         .create_session(&SessionDesc::default().targets(&targets))
         .unwrap();
 
-    let module = session.load_module("entry_point_specialization").unwrap();
+    let module = session
+        .load_module("examples/entry_point_specialization")
+        .unwrap();
 
     let f32_ty = module
         .layout(0)
