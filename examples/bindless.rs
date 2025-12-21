@@ -7,7 +7,7 @@ fn main() {
         .format(slang::CompileTarget::Spirv)
         .profile(global.find_profile("spirv_1_5"))];
 
-    let options = slang::CompilerOptions::default();
+    let options = slang::CompilerOptions::default().bindless_space_index(2);
 
     let session = global
         .create_session(&SessionDesc::default().targets(&targets).options(&options))
