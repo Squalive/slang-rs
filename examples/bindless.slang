@@ -1,9 +1,4 @@
 
-export T getDescriptorFromHandle<T>(DescriptorHandle<T> handleValue) where T : IOpaqueDescriptor
-{
-    return defaultGetDescriptorFromHandle(handleValue, BindlessDescriptorOptions.None);
-}
-
 struct Test {
 
     DescriptorHandle<Texture2D> texture;
@@ -15,13 +10,26 @@ struct Another {
     Texture2D te;
 }
 
+struct B {
+    Texture2D b;
+    Texture2D a;
+    Texture2D c;
+}
+
+ParameterBlock<Test> test;
+ParameterBlock<Another> another;
+ParameterBlock<B> b;
+
 [shader("compute")]
 [numthreads(64, 1, 1)]
-func main(test: ParameterBlock<Test>, another: ParameterBlock<Another>) {
+func main() {
     let color = test.texture.Load(int3(0, 0, 0));
     let colorb = test.another.Load(int2(0, 0));
     let a = another.te.Load(int3(0, 0, 0));
-    test.target[uint2(0)] = color + colorb + a;
+    let bb = b.b.Load(int3(0, 0, 0));
+    let ba = b.a.Load(int3(0, 0, 0));
+    let bc = b.c.Load(int3(0, 0, 0));
+    test.target[uint2(0)] = color + colorb + a + bb + ba + bc;
 }
 // struct Block {
 //     StructuredBuffer<StructuredBuffer<uint>.Handle> handles;
