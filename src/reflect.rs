@@ -282,6 +282,18 @@ mod type_layout {
             rcall!(spReflectionTypeLayout_GetType(self) as Option<&Type>)
         }
 
+        pub fn size(&self, category: ParameterCategory) -> usize {
+            rcall!(spReflectionTypeLayout_GetSize(self, category))
+        }
+
+        pub fn stride(&self, category: ParameterCategory) -> usize {
+            rcall!(spReflectionTypeLayout_GetStride(self, category))
+        }
+
+        pub fn alignment(&self, category: ParameterCategory) -> i32 {
+            rcall!(spReflectionTypeLayout_getAlignment(self, category))
+        }
+
         pub fn kind(&self) -> Option<TypeLayoutKind<'_>> {
             use TypeLayoutKind as L;
             use sys::SlangTypeKind as S;
