@@ -276,6 +276,7 @@ mod type_layout {
     use super::*;
     use crate::{MatrixLayoutMode, ResourceAccess, ResourceShape};
     use core::fmt::Debug;
+    use std::ops::Deref;
 
     impl TypeLayout {
         pub fn ty(&self) -> Option<&Type> {
@@ -467,6 +468,14 @@ mod type_layout {
 
     #[derive(Clone, Copy)]
     pub struct ResourceTypeLayout<'a>(&'a TypeLayout);
+
+    impl<'a> Deref for ResourceTypeLayout<'a> {
+        type Target = TypeLayout;
+
+        fn deref(&self) -> &Self::Target {
+            self.0
+        }
+    }
 
     impl Debug for ResourceTypeLayout<'_> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
