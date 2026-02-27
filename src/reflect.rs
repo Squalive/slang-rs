@@ -49,12 +49,12 @@ impl Shader {
         rcall!(spReflection_FindTypeByName(self, name.as_ptr()) as Option<&Type>)
     }
 
-    /** Get the descriptor set/space index allocated for the bindless resource heap.
-     *  Returns -1 if the program does not use bindless resource heap.
-     */
-    pub fn bindless_space_index(&self) -> Option<u64> {
-        u64::try_from(rcall!(spReflection_getBindlessSpaceIndex(self))).ok()
-    }
+    // /** Get the descriptor set/space index allocated for the bindless resource heap.
+    //  *  Returns -1 if the program does not use bindless resource heap.
+    //  */
+    // pub fn bindless_space_index(&self) -> Option<u64> {
+    //     u64::try_from(rcall!(spReflection_getBindlessSpaceIndex(self))).ok()
+    // }
 }
 
 #[repr(transparent)]

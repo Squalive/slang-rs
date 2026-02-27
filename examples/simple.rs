@@ -49,7 +49,7 @@ fn main() {
     let filesystem = Filesystem;
 
     let session_desc = slang::SessionDesc::default()
-        // .targets(&targets)
+        .targets(&targets)
         .options(&session_options)
         .file_system(filesystem);
 
@@ -96,18 +96,19 @@ fn main() {
             println!("Dependency File Path: {}", path.display());
         }
 
-        // let entry_point = module.find_entry_point_by_name("main").unwrap();
+        let entry_point = module.find_entry_point_by_name("comp_main").unwrap();
 
-        // let program = session
-        //     .create_composite_component_type(&[module.into(), entry_point.into()])
-        //     .unwrap();
+        let program = session
+            .create_composite_component_type(&[module.into(), entry_point.into()])
+            .unwrap();
 
-        // let linked_program = program.link().unwrap();
+        let linked_program = program.link().unwrap();
 
-        // // let reflect = linked_program.layout(0).unwrap();
-        // // let var = reflect.global_params_var_layout().unwrap();
-        // // print_var_layout(var);
-        // // validate_shader(reflect);
+        // let reflect = linked_program.layout(0).unwrap();
+        // println!("{:?}", reflect.bindless_space_index());
+        // let var = reflect.global_params_var_layout().unwrap();
+        // print_var_layout(var);
+        // validate_shader(reflect);
 
         // std::fs::create_dir_all("examples/output").unwrap();
 
