@@ -49,6 +49,14 @@ impl Shader {
         rcall!(spReflection_FindTypeByName(self, name.as_ptr()) as Option<&Type>)
     }
 
+    pub fn global_constant_buffer_binding(&self) -> u64 {
+        rcall!(spReflection_getGlobalConstantBufferBinding(self))
+    }
+
+    pub fn global_constant_buffer_size(&self) -> usize {
+        rcall!(spReflection_getGlobalConstantBufferSize(self))
+    }
+
     // /** Get the descriptor set/space index allocated for the bindless resource heap.
     //  *  Returns -1 if the program does not use bindless resource heap.
     //  */
