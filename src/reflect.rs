@@ -511,6 +511,10 @@ mod type_layout {
     }
 
     impl<'a> ContainerTypeLayout<'a> {
+        pub fn container_var_layout(self) -> Option<&'a VariableLayout> {
+            unsafe { self.0.container_var_layout() }
+        }
+
         pub fn element_type_layout(self) -> Option<&'a TypeLayout> {
             unsafe { self.0.element_type_layout() }
         }
