@@ -115,7 +115,7 @@ fn parse_module(line: &str) -> Option<String> {
 
 fn parse_import(line: &str) -> Option<String> {
     // Check if line starts with "import" followed by whitespace
-    if !line.starts_with("import") {
+    if !line.starts_with("import ") {
         return None;
     }
 
