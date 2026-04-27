@@ -1,9 +1,8 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::{c_char, c_void};
-
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 macro_rules! fp {
     ( ($($pn:ident: $pt:ty),*) ) => {

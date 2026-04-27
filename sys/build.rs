@@ -1,32 +1,34 @@
-use std::env;
+use std::{env, path::PathBuf};
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=VULKAN_SDK");
-    println!("cargo:rerun-if-env-changed=SLANG_INCLUDE_DIR");
+    let manifest_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is not set"));
+    let target = env::var("TARGET").expect("TARGET is not set");
 
-    let include_dir = if let Ok(dir) = env::var("SLANG_INCLUDE_DIR") {
-        dir
-    } else if let Ok(dir) = env::var("VULKAN_SDK") {
-        format!("{dir}/include/slang")
-    } else {
-        panic!("The environment variable SLANG_INCLUDE_DIR or VULKAN_SDK must be set");
+    let lib_dir = match target.as_str() {
+        // "x86_64-unknown-linux-gnu" => manifest_dir.join("slang/lib/x86_64-unknown-linux-gnu"),
+        "x86_64-pc-windows-msvc" => manifest_dir.join("slang/lib/x86_64-pc-windows-msvc"),
+        // "aarch64-apple-darwin" => manifest_dir.join("slang/lib/aarch64-apple-darwin"),
+        _ => panic!("unsupported target `{target}`"),
     };
 
-    let lib_dir = if let Ok(dir) = env::var("SLANG_LIB_DIR") {
-        dir
-    } else if let Ok(dir) = env::var("VULKAN_SDK") {
-        format!("{dir}/lib")
-    } else {
-        panic!("The environment variable SLANG_LIB_DIR or VULKAN_SDK must be set");
-    };
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
 
-    if !lib_dir.is_empty() {
-        println!("cargo:rustc-link-search=native={lib_dir}");
+    println!("cargo:rustc-link-lib=static=slang-compiler");
+    println!("cargo:rustc-link-lib=static=compiler-core");
+    println!("cargo:rustc-link-lib=static=core");
+    println!("cargo:rustc-link-lib=static=miniz");
+    println!("cargo:rustc-link-lib=static=lz4");
+    println!("cargo:rustc-link-lib=static=cmark-gfm");
+
+    if target.contains("linux") {
+        println!("cargo:rustc-link-lib=stdc++");
+    } else if target.contains("apple-darwin") {
+        println!("cargo:rustc-link-lib=c++");
     }
 
-    println!("cargo:rustc-link-lib=dylib=slang");
-
     let out_dir = env::var("OUT_DIR").expect("Couldn't determine output directory.");
+    let include_dir = "./slang/include";
 
     bindgen::builder()
         .header(format!("{include_dir}/slang.h"))
