@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
 
 env:
-  SLANG_REPO_URL: https://github.com/h3r2tic/slang.git
+  SLANG_REPO_URL: https://github.com/shader-slang/slang.git
   SLANG_REPO_BRANCH: master
   SLANG_COMMIT: d1c0e41e8c1c3e43b201f3115bf836a0d940f109
   SLANG_BUILD_JOBS: 8
   GCC_TOOLSET_VERSION: 10
   SLANG_CMAKE_TOOLSET: ClangCL
-  
+
 jobs:
   linux:
     name: Linux x86_64
@@ -22,12 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Linux archives
-        run: ./slang-sys/slang-builder/build.sh
+        run: ./sys/slang-builder/build.sh
       - name: Upload Linux archives
         uses: actions/upload-artifact@v4
         with:
           name: slang-lib-x86_64-unknown-linux-gnu
-          path: slang-sys/slang/lib/x86_64-unknown-linux-gnu/*
+          path: sys/slang/lib/x86_64-unknown-linux-gnu/*
 
   windows:
     name: Windows x86_64
@@ -36,12 +36,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Windows archives
         shell: cmd
-        run: slang-sys\slang-builder\build.cmd
+        run: sys\slang-builder\build.cmd
       - name: Upload Windows archives
         uses: actions/upload-artifact@v4
         with:
           name: slang-lib-x86_64-pc-windows-msvc
-          path: slang-sys/slang/lib/x86_64-pc-windows-msvc/*
+          path: sys/slang/lib/x86_64-pc-windows-msvc/*
 
   macos:
     name: macOS arm64
@@ -49,9 +49,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build macOS archives
-        run: ./slang-sys/slang-builder/build-macos.sh
+        run: ./sys/slang-builder/build-macos.sh
       - name: Upload macOS archives
         uses: actions/upload-artifact@v4
         with:
           name: slang-lib-aarch64-apple-darwin
-          path: slang-sys/slang/lib/aarch64-apple-darwin/*
+          path: sys/slang/lib/aarch64-apple-darwin/*
