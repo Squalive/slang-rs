@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build macOS archives
-        run: ./sys/slang-builder/build-macos.sh
+        run: bash ./sys/slang-builder/build-macos.sh
       - name: Upload macOS archives
         uses: actions/upload-artifact@v4
         with:
