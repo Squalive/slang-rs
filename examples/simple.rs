@@ -104,22 +104,22 @@ fn main() {
 
         let linked_program = program.link().unwrap();
 
-        // let reflect = linked_program.layout(0).unwrap();
-        // println!("{:?}", reflect.bindless_space_index());
-        // let var = reflect.global_params_var_layout().unwrap();
-        // print_var_layout(var);
-        // validate_shader(reflect);
+        let reflect = linked_program.layout(0).unwrap();
+        println!("{:?}", reflect.bindless_space_index());
+        let var = reflect.global_params_var_layout().unwrap();
+        print_var_layout(var);
+        validate_shader(reflect);
 
-        // std::fs::create_dir_all("examples/output").unwrap();
+        std::fs::create_dir_all("examples/output").unwrap();
 
-        // let spv = linked_program.entry_point_code(0, 0).unwrap();
-        // std::fs::write("examples/output/test.spv", spv.as_slice()).unwrap();
+        let spv = linked_program.entry_point_code(0, 0).unwrap();
+        std::fs::write("examples/output/test.spv", spv.as_slice()).unwrap();
 
-        // let glsl = linked_program.entry_point_code(0, 1).unwrap();
-        // std::fs::write("examples/output/test.comp", glsl.as_slice()).unwrap();
+        let glsl = linked_program.entry_point_code(0, 1).unwrap();
+        std::fs::write("examples/output/test.comp", glsl.as_slice()).unwrap();
 
-        // let wgsl = linked_program.entry_point_code(0, 2).unwrap();
-        // std::fs::write("examples/output/test.wgsl", wgsl.as_slice()).unwrap();
+        let wgsl = linked_program.entry_point_code(0, 2).unwrap();
+        std::fs::write("examples/output/test.wgsl", wgsl.as_slice()).unwrap();
     }
 }
 

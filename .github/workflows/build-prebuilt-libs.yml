@@ -10,7 +10,7 @@ on:
 env:
   SLANG_REPO_URL: https://github.com/shader-slang/slang.git
   SLANG_REPO_BRANCH: master
-  SLANG_COMMIT: eb9403ef595a99c2ff6def1d538dbd7a792d9371
+  SLANG_COMMIT: d1c0e41e8c1c3e43b201f3115bf836a0d940f109
   SLANG_BUILD_JOBS: 8
   GCC_TOOLSET_VERSION: 10
   SLANG_CMAKE_TOOLSET: ClangCL

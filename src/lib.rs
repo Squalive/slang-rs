@@ -289,6 +289,7 @@ macro_rules! into_module {
     ($self:ident, $module:ident, $err_code:expr, $diagnostics:ident) => {
         match Unknown::new_with_ref($module) {
             Some(u) => {
+                #[cfg(feature = "trace")]
                 if let Some(diagnostics) = Unknown::new_with_ref($diagnostics) {
                     tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
                 }
@@ -297,6 +298,7 @@ macro_rules! into_module {
             None => match Unknown::new_with_ref($diagnostics) {
                 Some(diagnostics) => {
                     let blob = Blob(diagnostics);
+                    #[cfg(feature = "trace")]
                     tracing::error!("{}", blob.as_str().unwrap());
                     Err(Error::Blob(blob))
                 }
@@ -418,35 +420,34 @@ impl Session {
         )
     }
 
-    /** Combine multiple component types to create a composite component type.
-
-       The `componentTypes` array must contain `componentTypeCount` pointers
-       to component types that were loaded or created using the same session.
-
-       The shader parameters and specialization parameters of the composite will
-       be the union of those in `componentTypes`. The relative order of child
-       component types is significant, and will affect the order in which
-       parameters are reflected and laid out.
-
-       The entry-point functions of the composite will be the union of those in
-       `componentTypes`, and will follow the ordering of `componentTypes`.
-
-       The requirements of the composite component type will be a subset of
-       those in `componentTypes`. If an entry in `componentTypes` has a requirement
-       that can be satisfied by another entry, then the composition will
-       satisfy the requirement and it will not appear as a requirement of
-       the composite. If multiple entries in `componentTypes` have a requirement
-       for the same type, then only the first such requirement will be retained
-       on the composite. The relative ordering of requirements on the composite
-       will otherwise match that of `componentTypes`.
-
-       If any diagnostics are generated during creation of the composite, they
-       will be written to `outDiagnostics`. If an error is encountered, the
-       function will return null.
-
-       It is an error to create a composite component type that recursively
-       aggregates a single module more than once.
-    */
+    /// Combine multiple component types to create a composite component type.
+    ///
+    ///  The `componentTypes` array must contain `componentTypeCount` pointers
+    ///  to component types that were loaded or created using the same session.
+    ///
+    ///  The shader parameters and specialization parameters of the composite will
+    ///  be the union of those in `componentTypes`. The relative order of child
+    ///  component types is significant, and will affect the order in which
+    ///  parameters are reflected and laid out.
+    ///
+    ///  The entry-point functions of the composite will be the union of those in
+    ///  `componentTypes`, and will follow the ordering of `componentTypes`.
+    ///
+    ///  The requirements of the composite component type will be a subset of
+    ///  those in `componentTypes`. If an entry in `componentTypes` has a requirement
+    ///  that can be satisfied by another entry, then the composition will
+    ///  satisfy the requirement and it will not appear as a requirement of
+    ///  the composite. If multiple entries in `componentTypes` have a requirement
+    ///  for the same type, then only the first such requirement will be retained
+    ///  on the composite. The relative ordering of requirements on the composite
+    ///  will otherwise match that of `componentTypes`.
+    ///
+    ///  If any diagnostics are generated during creation of the composite, they
+    ///  will be written to `outDiagnostics`. If an error is encountered, the
+    ///  function will return null.
+    ///
+    ///  It is an error to create a composite component type that recursively
+    ///  aggregates a single module more than once.
     pub fn create_composite_component_type(
         &self,
         component_types: &[ComponentType],
@@ -604,16 +605,15 @@ impl ComponentType {
         Ok(Blob(Unknown::new_with_ref(code).unwrap()))
     }
 
-    /** Get the compiled code for the entry point at `entryPointIndex` for the chosen `targetIndex`
-
-       Entry point code can only be computed for a component type that
-       has no specialization parameters (it must be fully specialized)
-       and that has no requirements (it must be fully linked).
-
-       If code has not already been generated for the given entry point and target,
-       then a compilation error may be detected, in which case `outDiagnostics`
-       (if non-null) will be filled in with a blob of messages diagnosing the error.
-    */
+    ///  Get the compiled code for the entry point at `entryPointIndex` for the chosen `targetIndex`
+    ///
+    ///   Entry point code can only be computed for a component type that
+    ///   has no specialization parameters (it must be fully specialized)
+    ///   and that has no requirements (it must be fully linked).
+    ///
+    ///   If code has not already been generated for the given entry point and target,
+    ///   then a compilation error may be detected, in which case `outDiagnostics`
+    ///   (if non-null) will be filled in with a blob of messages diagnosing the error.
     pub fn entry_point_code(&self, index: i64, target: i64) -> Result<Blob> {
         let mut code = null_mut();
         vcall_maybe_diagnostics!(self, getEntryPointCode(index, target, &mut code))?;
