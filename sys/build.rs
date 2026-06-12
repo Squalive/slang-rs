@@ -6,9 +6,9 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET is not set");
 
     let lib_dir = match target.as_str() {
-        // "x86_64-unknown-linux-gnu" => manifest_dir.join("slang/lib/x86_64-unknown-linux-gnu"),
+        "x86_64-unknown-linux-gnu" => manifest_dir.join("slang/lib/x86_64-unknown-linux-gnu"),
         "x86_64-pc-windows-msvc" => manifest_dir.join("slang/lib/x86_64-pc-windows-msvc"),
-        // "aarch64-apple-darwin" => manifest_dir.join("slang/lib/aarch64-apple-darwin"),
+        "aarch64-apple-darwin" => manifest_dir.join("slang/lib/aarch64-apple-darwin"),
         _ => panic!("unsupported target `{target}`"),
     };
 
