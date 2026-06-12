@@ -31,6 +31,8 @@ trap cleanup EXIT
     -t "${IMAGE_NAME}" \
     "${SCRIPT_DIR}"
 
+find -name "*.a"
+
 CONTAINER_ID=$("${CONTAINER_RUNTIME}" create "${IMAGE_NAME}")
 "${CONTAINER_RUNTIME}" start -a "${CONTAINER_ID}"
 
@@ -43,7 +45,7 @@ artifacts=(
     /workspace/slang/build/Release/lib/libcore.a
     /workspace/slang/build/external/miniz/libminiz.a
     /workspace/slang/build/external/lz4/build/cmake/liblz4.a
-    /workspace/slang/build/external/cmark/src/cmark-gfm.a
+    /workspace/slang/build/external/cmark/src/libcmark-gfm.a
 )
 
 for artifact in "${artifacts[@]}"; do
