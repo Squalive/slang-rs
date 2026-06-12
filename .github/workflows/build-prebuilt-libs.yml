@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Linux archives
-        run: ./sys/slang-builder/build.sh
+        run: bash ./sys/slang-builder/build.sh
       - name: Upload Linux archives
         uses: actions/upload-artifact@v4
         with:
