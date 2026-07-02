@@ -57,10 +57,9 @@ impl Shader {
         rcall!(spReflection_getGlobalConstantBufferSize(self))
     }
 
-    /// Get the descriptor set/space index allocated for the bindless resource heap.
-    /// Returns -1 if the program does not use bindless resource heap.
-    pub fn bindless_space_index(&self) -> Option<u64> {
-        u64::try_from(rcall!(spReflection_getBindlessSpaceIndex(self))).ok()
+    #[doc = " Get the descriptor set/space index reserved for the bindless resource heap.\n\n This is a layout/reflection reservation made before final target lowering and\n optimization. It can remain non-negative even when the emitted target code no\n longer uses a bindless heap/resource-handle path. Query `IBindlessResourceMetadata`\n from target metadata to determine whether such a path survived in the compiled\n target IR.\n\n Returns -1 only when no bindless heap space was reserved for the program layout."]
+    pub fn bindless_space_index(&self) -> u32 {
+        rcall!(spReflection_getBindlessSpaceIndex(self)) as u32
     }
 }
 
