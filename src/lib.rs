@@ -25,24 +25,35 @@ pub use types::*;
 pub type Result<T> = core::result::Result<T, Error>;
 
 use alloc::borrow::Cow;
-use core::fmt::Debug;
-use core::ptr::{NonNull, null_mut};
-use core::str::Utf8Error;
-use std::ffi::{CStr, CString, c_void};
-use std::path::Path;
+use core::{
+    fmt::Debug,
+    ops::Deref,
+    ptr::{NonNull, null_mut},
+    str::Utf8Error,
+};
+use std::{
+    ffi::{CStr, CString, c_void},
+    path::Path,
+};
 
 /// # Safety
 ///
 /// Underlying data must contains a vtable
-unsafe trait Interface: Sized {
+pub unsafe trait Interface: Sized {
     type Vtable;
     const UUID: Uuid;
 
+    fn new(unknown: Unknown) -> Self;
+
+    /// # Safety
+    /// self must be a valid interface
     #[inline(always)]
     unsafe fn vtable(&self) -> &Self::Vtable {
         unsafe { &**self.as_raw::<*mut Self::Vtable>() }
     }
 
+    /// # Safety
+    /// self must be a valid interface
     #[inline(always)]
     unsafe fn as_raw<T>(&self) -> *mut T {
         unsafe { std::mem::transmute_copy(self) }
@@ -119,6 +130,10 @@ unsafe impl Interface for Unknown {
         0x0000,
         [0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        unknown
+    }
 }
 
 impl Clone for Unknown {
@@ -158,6 +173,17 @@ unsafe impl Interface for Castable {
         0x44b0,
         [0x8b, 0xf2, 0xcb, 0x31, 0x87, 0x4d, 0xe2, 0x39],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
+}
+
+impl Castable {
+    pub fn cast_as<T: Interface>(&self) -> Option<T> {
+        let ptr = vcall!(self, castAs(&T::UUID));
+        Some(T::new(Unknown::new_with_ref(ptr)?))
+    }
 }
 
 #[repr(transparent)]
@@ -172,6 +198,10 @@ unsafe impl Interface for Blob {
         0x40e2,
         [0xAC, 0x58, 0x0D, 0x98, 0x9C, 0x3A, 0x01, 0x02],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
 }
 
 impl Debug for Blob {
@@ -210,6 +240,10 @@ unsafe impl Interface for FileSystem {
         0x4BA0,
         [0xAD, 0x60, 0x1F, 0xD8, 0x63, 0xA9, 0x15, 0xAB],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
 }
 
 impl FileSystem {
@@ -241,6 +275,10 @@ unsafe impl Interface for GlobalSession {
         0x452e,
         [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
 }
 
 impl GlobalSession {
@@ -283,6 +321,10 @@ unsafe impl Interface for Session {
         0x468f,
         [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
 }
 
 macro_rules! into_module {
@@ -469,7 +511,15 @@ impl Session {
 
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct Metadata(Unknown);
+pub struct Metadata(Castable);
+
+impl Deref for Metadata {
+    type Target = Castable;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 unsafe impl Interface for Metadata {
     type Vtable = sys::IMetadata_vtable;
@@ -479,6 +529,10 @@ unsafe impl Interface for Metadata {
         0x4b7f,
         [0xaf, 0x8e, 0x2, 0x6e, 0x90, 0x5d, 0x73, 0x32],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(Castable(unknown))
+    }
 }
 
 impl Metadata {
@@ -509,6 +563,36 @@ impl Metadata {
 
 #[repr(transparent)]
 #[derive(Clone)]
+pub struct BindlessResourceMetadata(Castable);
+
+unsafe impl Interface for BindlessResourceMetadata {
+    type Vtable = sys::IBindlessResourceMetadata_vtable;
+
+    const UUID: Uuid = uuid(
+        0xeafa96d3,
+        0x2352,
+        0x4bf4,
+        [0x88, 0x64, 0x32, 0x28, 0xa4, 0x07, 0x7a, 0x83],
+    );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(Castable(unknown))
+    }
+}
+
+impl BindlessResourceMetadata {
+    /// Returns true when the compiled target IR still contains a bindless
+    /// descriptor-heap/resource-handle path after target-specific lowering. This is a
+    /// code-generation signal, not a complete cross-target host binding policy; targets
+    /// that lower descriptor handles to native resource handles or addresses may not require
+    /// an explicit descriptor-heap binding even when this returns true.
+    pub fn is_using_bindless_resource_heap(&self) -> bool {
+        vcall!(self, usesBindlessResourceHeap())
+    }
+}
+
+#[repr(transparent)]
+#[derive(Clone)]
 pub struct ComponentType(Unknown);
 
 unsafe impl Interface for ComponentType {
@@ -519,6 +603,10 @@ unsafe impl Interface for ComponentType {
         0x4929,
         [0x9e, 0x5e, 0xd1, 0x5e, 0x7c, 0x24, 0x1, 0x5f],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(unknown)
+    }
 }
 
 impl ComponentType {
@@ -605,6 +693,12 @@ impl ComponentType {
         Ok(Blob(Unknown::new_with_ref(code).unwrap()))
     }
 
+    pub fn target_metadata(&self, target: i64) -> Result<Metadata> {
+        let mut metadata = null_mut();
+        vcall_maybe_diagnostics!(self, getTargetMetadata(target, &mut metadata))?;
+        Ok(Metadata(Castable(Unknown::new_with_ref(metadata).unwrap())))
+    }
+
     ///  Get the compiled code for the entry point at `entryPointIndex` for the chosen `targetIndex`
     ///
     ///   Entry point code can only be computed for a component type that
@@ -633,6 +727,10 @@ unsafe impl Interface for EntryPoint {
         0x4ca0,
         [0xa3, 0xac, 0x2, 0xf7, 0xfa, 0x24, 0x2, 0xb8],
     );
+
+    fn new(unknown: Unknown) -> Self {
+        Self(ComponentType(unknown))
+    }
 }
 
 impl From<EntryPoint> for ComponentType {
@@ -666,6 +764,10 @@ unsafe impl Interface for Module<'_> {
         0x4d31,
         [0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79],
     );
+
+    fn new(_unknown: Unknown) -> Self {
+        unreachable!()
+    }
 }
 
 impl From<Module<'_>> for ComponentType {

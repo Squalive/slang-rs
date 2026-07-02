@@ -1,4 +1,4 @@
-use slang::{GlobalSession, SessionDesc};
+use slang::{BindlessResourceMetadata, GlobalSession, SessionDesc};
 
 fn main() {
     let global = GlobalSession::new().unwrap();
@@ -33,15 +33,12 @@ fn main() {
     //         .unwrap(),
     // );
 
-    let code = composed.entry_point_code(0, 0).unwrap();
-    let code = code.as_slice();
-    std::fs::write("examples/bindless.spv", code).unwrap();
+    let target_metadata = composed.target_metadata(0).unwrap();
 
-    let reflected = rspirv_reflect::Reflection::new_from_spirv(code).unwrap();
-    for (set_index, set_bindings) in reflected.get_descriptor_sets().unwrap() {
-        println!("set: {set_index}");
-        for (binding_index, binding_info) in set_bindings {
-            println!("\tbinding: {binding_index}, info: {binding_info:?}");
-        }
-    }
+    let bindless_metadata = target_metadata
+        .cast_as::<BindlessResourceMetadata>()
+        .unwrap();
+
+    assert!(bindless_metadata.is_using_bindless_resource_heap());
+    println!("{}", bindless_metadata.is_using_bindless_resource_heap())
 }

@@ -164,6 +164,13 @@ pub struct IMetadata_vtable {
 }
 
 #[repr(C)]
+pub struct IBindlessResourceMetadata_vtable {
+    pub _base: ISlangCastable_vtable,
+
+    pub usesBindlessResourceHeap: fp!(() -> bool)
+}
+
+#[repr(C)]
 pub struct IComponentType_vtable {
 	pub _base: ISlangUnknown__bindgen_vtable,
 

@@ -114,12 +114,6 @@ fn main() {
 
         let spv = linked_program.entry_point_code(0, 0).unwrap();
         std::fs::write("examples/output/test.spv", spv.as_slice()).unwrap();
-
-        let glsl = linked_program.entry_point_code(0, 1).unwrap();
-        std::fs::write("examples/output/test.comp", glsl.as_slice()).unwrap();
-
-        let wgsl = linked_program.entry_point_code(0, 2).unwrap();
-        std::fs::write("examples/output/test.wgsl", wgsl.as_slice()).unwrap();
     }
 }
 
