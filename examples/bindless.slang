@@ -16,9 +16,9 @@ struct B {
   Texture2D c;
 }
 
-ParameterBlock<Test> test;
-ParameterBlock<Another> another;
-ParameterBlock<B> b;
+uniform ParameterBlock<Test> test;
+uniform ParameterBlock<Another> another;
+uniform ParameterBlock<B> b;
 
 [shader("compute")]
 [numthreads(64, 1, 1)]
