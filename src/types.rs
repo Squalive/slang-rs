@@ -185,6 +185,7 @@ impl CompilerOptions {
     option!(NoMangle, no_mangle(enable: i32 bool));
     option!(ValidateUniformity, validate_uniformity(enable: i32 bool));
     option!(BindlessSpaceIndex, bindless_space_index(index: i32 u32));
+    option!(SPIRVResourceHeapStride, spirv_resource_heap_stride(stride: i32 u32));
     option!(SPIRVUnifiedDescriptorHeapStride, spirv_unified_descriptor_heap_stride(enable: i32 bool));
 
     option!(Capability, capability(cap: &str));
