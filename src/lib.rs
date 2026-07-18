@@ -24,7 +24,6 @@ pub use types::*;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-use alloc::borrow::Cow;
 use core::{
     fmt::Debug,
     ops::Deref,
@@ -145,7 +144,8 @@ impl Clone for Unknown {
 
 impl Drop for Unknown {
     fn drop(&mut self) {
-        vcall!(self, ISlangUnknown_release());
+        let count = vcall!(self, ISlangUnknown_release());
+        println!("{count}");
     }
 }
 
@@ -253,6 +253,7 @@ impl FileSystem {
 }
 
 #[derive(Clone, Copy)]
+#[repr(transparent)]
 pub struct ProfileId(sys::SlangProfileID);
 
 impl ProfileId {
@@ -335,7 +336,9 @@ macro_rules! into_module {
                 if let Some(diagnostics) = Unknown::new_with_ref($diagnostics) {
                     tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
                 }
-                Ok(Module::new(ComponentType(u), Cow::Borrowed($self)))
+                let module = Module(ComponentType(u));
+                unsafe { (module.0.0.vtable().ISlangUnknown_addRef)(module.as_raw()) };
+                Ok(module)
             }
             None => match Unknown::new_with_ref($diagnostics) {
                 Some(diagnostics) => {
@@ -352,7 +355,7 @@ macro_rules! into_module {
 
 impl Session {
     /** Load a module as it would be by code using `import`. */
-    pub fn load_module(&self, module_name: &str) -> Result<Module<'_>> {
+    pub fn load_module(&self, module_name: &str) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let mut out_diagnostics = null_mut();
         let module = vcall!(self, loadModule(module_name.as_ptr(), &mut out_diagnostics));
@@ -365,7 +368,7 @@ impl Session {
         module_name: &str,
         path: &str,
         blob: impl ISlangBlob,
-    ) -> Result<Module<'_>> {
+    ) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let path = CString::new(path).map_err(|_| Error::Unknown)?;
         let blob = Com::new_blob(blob).into_unknown();
@@ -388,7 +391,7 @@ impl Session {
         module_name: &str,
         path: &str,
         source: &str,
-    ) -> Result<Module<'_>> {
+    ) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let path = CString::new(path).map_err(|_| Error::Unknown)?;
         let source = CString::new(source).map_err(|_| Error::Unknown)?;
@@ -410,7 +413,7 @@ impl Session {
         module_name: &str,
         path: &str,
         source: impl ISlangBlob,
-    ) -> Result<Module<'_>> {
+    ) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let path = CString::new(path).map_err(|_| Error::Unknown)?;
         let source = Com::new_blob(source).into_unknown();
@@ -431,16 +434,13 @@ impl Session {
         vcall!(self, getLoadedModuleCount()) as _
     }
 
-    pub fn get_loaded_module(&self, index: usize) -> Option<Module<'_>> {
+    pub fn get_loaded_module(&self, index: usize) -> Option<Module> {
         let module = vcall!(self, getLoadedModule(index as _));
-        let module = Module::new(
-            ComponentType(Unknown::new_with_ref(module)?),
-            Cow::Borrowed(self),
-        );
+        let module = Module(ComponentType(Unknown::new_with_ref(module)?));
         Some(module)
     }
 
-    pub fn loaded_modules(&self) -> impl ExactSizeIterator<Item = Module<'_>> {
+    pub fn loaded_modules(&self) -> impl ExactSizeIterator<Item = Module> {
         (0..self.loaded_module_count()).map(|i| self.get_loaded_module(i).unwrap())
     }
 
@@ -749,14 +749,11 @@ impl EntryPoint {
     }
 }
 
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Clone)]
-pub struct Module<'s> {
-    base: ComponentType,
-    _session: Cow<'s, Session>,
-}
+pub struct Module(ComponentType);
 
-unsafe impl Interface for Module<'_> {
+unsafe impl Interface for Module {
     type Vtable = sys::IModule_vtable;
     const UUID: Uuid = uuid(
         0xc720e64,
@@ -770,30 +767,15 @@ unsafe impl Interface for Module<'_> {
     }
 }
 
-impl From<Module<'_>> for ComponentType {
-    fn from(value: Module<'_>) -> Self {
-        value.base
+impl From<Module> for ComponentType {
+    fn from(value: Module) -> Self {
+        value.0
     }
 }
 
-impl<'s> Module<'s> {
-    fn new(base: ComponentType, _session: Cow<'s, Session>) -> Self {
-        Self { base, _session }
-    }
-
-    pub fn into_owned(self) -> Module<'static> {
-        Module {
-            base: self.base,
-            _session: Cow::Owned(self._session.into_owned()),
-        }
-    }
-
-    pub fn clone_owned(&self) -> Module<'static> {
-        self.clone().into_owned()
-    }
-
+impl Module {
     pub fn layout(&self, target: i64) -> Result<&reflect::Shader> {
-        self.base.layout(target)
+        self.0.layout(target)
     }
 
     /// Find and an entry point by name.

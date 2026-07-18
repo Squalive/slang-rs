@@ -1,4 +1,4 @@
-use slang::{BindlessResourceMetadata, GlobalSession, SessionDesc};
+use slang::{GlobalSession, SessionDesc};
 
 fn main() {
     let global = GlobalSession::new().unwrap();
@@ -15,30 +15,23 @@ fn main() {
 
     let module = session.load_module("examples/bindless").unwrap();
 
-    let entry_point = module.find_entry_point_by_name("main").unwrap();
+    drop((global, session));
 
-    let composed = session
-        .create_composite_component_type(&[module.into(), entry_point.into()])
-        .unwrap()
-        .link()
-        .unwrap();
+    drop(module);
+    // let entry_point = module.find_entry_point_by_name("main").unwrap();
 
-    // let reflect = composed.layout(0).unwrap();
+    // let composed = session
+    //     .create_composite_component_type(&[module.into(), entry_point.into()])
+    //     .unwrap()
+    //     .link()
+    //     .unwrap();
 
-    // print_var_layout(
-    //     reflect
-    //         .entry_point_by_index(0)
-    //         .unwrap()
-    //         .var_layout()
-    //         .unwrap(),
-    // );
+    // let target_metadata = composed.target_metadata(0).unwrap();
 
-    let target_metadata = composed.target_metadata(0).unwrap();
+    // let bindless_metadata = target_metadata
+    //     .cast_as::<BindlessResourceMetadata>()
+    //     .unwrap();
 
-    let bindless_metadata = target_metadata
-        .cast_as::<BindlessResourceMetadata>()
-        .unwrap();
-
-    assert!(bindless_metadata.is_using_bindless_resource_heap());
-    println!("{}", bindless_metadata.is_using_bindless_resource_heap())
+    // assert!(bindless_metadata.is_using_bindless_resource_heap());
+    // println!("{}", bindless_metadata.is_using_bindless_resource_heap())
 }
