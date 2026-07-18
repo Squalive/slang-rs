@@ -144,8 +144,7 @@ impl Clone for Unknown {
 
 impl Drop for Unknown {
     fn drop(&mut self) {
-        let count = vcall!(self, ISlangUnknown_release());
-        println!("{count}");
+        vcall!(self, ISlangUnknown_release());
     }
 }
 
