@@ -1181,7 +1181,7 @@ typedef uint32_t SlangSizeT;
 
         TraceCoverage = 145, // bool: insert per-statement line coverage counters
         TraceCoverageBinding =
-            146, // intValue0: register index; intValue1: register space — explicit
+            146, // intValue0: register index; intValue1: register space - explicit
                  //   binding for the synthesized __slang_coverage buffer. Consumed
                  //   only when any coverage mode is enabled; the slangc CLI spelling
                  //   also enables TraceCoverage.
@@ -1235,6 +1235,14 @@ typedef uint32_t SlangSizeT;
         // Repeatable: enabling multiple groups is additive, matching how -Wall/-Wextra/-Wpedantic
         // combine on the command line. CLI spellings: -Wall, -Wextra, -Wpedantic.
         WarningLevel = 155,
+
+        SeparateDebugInfoOutput =
+            156, // stringValue0: explicit path for the slangc separate-debug-info sidecar.
+                 //   When unset, slangc derives the sidecar path from the main artifact path.
+                 //   This option is output policy only and is excluded from compiler cache keys.
+                 //   It requires EmitSeparateDebug and permits the main artifact to be written to
+                 //   stdout. A value of "-" writes the separate debug information to stdout when
+                 //   the main artifact is written to a file. Query/set with the string option APIs.
 
         // Do not assign an explicit value to CountOf. It must remain one past the last option,
         // which it derives implicitly from the preceding (highest-valued) enumerator.
@@ -3164,26 +3172,52 @@ struct VariableReflection
         return findAttributeByName(globalSession, name);
     }
 
-    bool hasDefaultValue()
+    /// Deprecated: call getDefaultValueBlob and check for a null blob instead.
+    SLANG_DEPRECATED bool hasDefaultValue()
     {
         return spReflectionVariable_HasDefaultValue((SlangReflectionVariable*)this);
     }
 
+    /// Deprecated: use getDefaultValueBlob instead.
     /// Gets an integer default value. For specialized generic static constants,
     /// the semantic value is resolved under the current specialization first;
     /// literal initializers are used as a fallback when no integer value resolves.
-    SlangResult getDefaultValueInt(int64_t* value)
+    SLANG_DEPRECATED SlangResult getDefaultValueInt(int64_t* value)
     {
         return spReflectionVariable_GetDefaultValueInt((SlangReflectionVariable*)this, value);
     }
 
+    /// Deprecated: use getDefaultValueBlob instead.
     /// Gets a floating-point default value from a literal initializer. Unlike
     /// getDefaultValueInt, this API does not currently resolve specialized
     /// generic semantic values before checking the initializer.
-    SlangResult getDefaultValueFloat(float* value)
+    SLANG_DEPRECATED SlangResult getDefaultValueFloat(float* value)
     {
         return spReflectionVariable_GetDefaultValueFloat((SlangReflectionVariable*)this, value);
     }
+
+    /** Retrieves a variable's default initializer as a packed byte blob.
+     *
+     * If the variable has no explicit initializer, returns `SLANG_OK` and sets `*outBlob` to
+     * `nullptr`. Otherwise `*outBlob` receives an `ISlangBlob*` with an added reference holding the
+     * initializer's bytes; the caller owns that reference. Returns `SLANG_E_INVALID_ARG` for null
+     * arguments and `SLANG_E_NOT_AVAILABLE` when the initializer cannot be represented as a
+     * default-value blob.
+     *
+     * Scalars, vectors, matrices, fixed-size arrays, structs/aggregates, and enums are supported.
+     * Values are packed in natural scalar/field order with no aggregate padding: matrices
+     * row-by-row, base-class fields before derived fields, and a field with no explicit initializer
+     * as its zero/default representation. Encoding is target-independent: `bool` occupies 4 bytes
+     * to match Slang's GPU scalar layout, `intptr_t`/`uintptr_t` always occupy 8 bytes
+     * signed/unsigned (consumers on narrower-pointer targets must narrow explicitly), and enums use
+     * their underlying tag type.
+     *
+     * Scalars are stored in host byte order (little-endian on all supported platforms), and the
+     * buffer is aligned to at least `alignof(max_align_t)`, which covers every scalar type encoded
+     * by this API. After checking the blob size, callers may cast `getBufferPointer()` directly to
+     * the payload element type.
+     */
+    SLANG_API SlangResult getDefaultValueBlob(ISlangBlob** outBlob);
 
     GenericReflection* getGenericContainer()
     {
@@ -4239,13 +4273,13 @@ struct IGlobalSession : public ISlangUnknown
     Only some downstream compilers report a numeric version (e.g. NVRTC, DXC, the C/C++ toolchains);
     others (e.g. the glslang family and Tint) always report `(0,0)`. The version is read uniformly
     from the loaded compiler's descriptor, so a versionless-but-loaded compiler still returns
-    SLANG_OK with major/minor 0 — which the result alone does not distinguish from a genuine 0.0.
+    SLANG_OK with major/minor 0 - which the result alone does not distinguish from a genuine 0.0.
     @param passThrough The downstream compiler to query (e.g. SLANG_PASS_THROUGH_NVRTC).
     @param outMajor Receives the major version number. May be null.
     @param outMinor Receives the minor version number. May be null.
     @return SLANG_OK if the compiler was located and loaded (see the versionless note above).
     SLANG_E_NOT_FOUND if the compiler could not be located or loaded, and likewise for
-    SLANG_PASS_THROUGH_NONE or an out-of-range value — the result code alone does not distinguish an
+    SLANG_PASS_THROUGH_NONE or an out-of-range value - the result code alone does not distinguish an
     invalid argument from a compiler that is simply not installed. */
     virtual SLANG_NO_THROW SlangResult SLANG_MCALL
     getDownstreamCompilerVersion(SlangPassThrough passThrough, int* outMajor, int* outMinor) = 0;
