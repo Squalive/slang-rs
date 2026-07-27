@@ -91,7 +91,7 @@ macro_rules! vcall_maybe_diagnostics {
 			if result >= 0 {
 				Ok(())
 			} else {
-			    match Unknown::new_with_ref(out_diagnostics) {
+			    match Unknown::new(out_diagnostics) {
 					Some(diagnostics) => {
 					    Err(Error::Blob(Blob(diagnostics)))
 					}
@@ -153,11 +153,11 @@ impl Unknown {
         NonNull::new(ptr).map(|p| Self(p.cast()))
     }
 
-    fn new_with_ref<T>(ptr: *mut T) -> Option<Self> {
-        let unknown = Self::new(ptr)?;
-        vcall!(unknown, ISlangUnknown_addRef());
-        Some(unknown)
-    }
+    // fn new_with_ref<T>(ptr: *mut T) -> Option<Self> {
+    //     let unknown = Self::new(ptr)?;
+    //     vcall!(unknown, ISlangUnknown_addRef());
+    //     Some(unknown)
+    // }
 }
 
 #[repr(transparent)]
@@ -181,7 +181,7 @@ unsafe impl Interface for Castable {
 impl Castable {
     pub fn cast_as<T: Interface>(&self) -> Option<T> {
         let ptr = vcall!(self, castAs(&T::UUID));
-        Some(T::new(Unknown::new_with_ref(ptr)?))
+        Some(T::new(Unknown::new(ptr)?))
     }
 }
 
@@ -329,17 +329,17 @@ unsafe impl Interface for Session {
 
 macro_rules! into_module {
     ($self:ident, $module:ident, $err_code:expr, $diagnostics:ident) => {
-        match Unknown::new_with_ref($module) {
+        match Unknown::new($module) {
             Some(u) => {
                 #[cfg(feature = "trace")]
-                if let Some(diagnostics) = Unknown::new_with_ref($diagnostics) {
+                if let Some(diagnostics) = Unknown::new($diagnostics) {
                     tracing::warn!("{}", Blob(diagnostics).as_str().unwrap());
                 }
                 let module = Module(ComponentType(u));
                 unsafe { (module.0.0.vtable().ISlangUnknown_addRef)(module.as_raw()) };
                 Ok(module)
             }
-            None => match Unknown::new_with_ref($diagnostics) {
+            None => match Unknown::new($diagnostics) {
                 Some(diagnostics) => {
                     let blob = Blob(diagnostics);
                     #[cfg(feature = "trace")]
@@ -435,7 +435,7 @@ impl Session {
 
     pub fn get_loaded_module(&self, index: usize) -> Option<Module> {
         let module = vcall!(self, getLoadedModule(index as _));
-        let module = Module(ComponentType(Unknown::new_with_ref(module)?));
+        let module = Module(ComponentType(Unknown::new(module)?));
         Some(module)
     }
 
@@ -503,7 +503,7 @@ impl Session {
             )
         )?;
         Ok(ComponentType(
-            Unknown::new_with_ref(composite_component_type).unwrap(),
+            Unknown::new(composite_component_type).unwrap(),
         ))
     }
 }
@@ -644,14 +644,14 @@ impl ComponentType {
 
         let mut out = null_mut();
         vcall_maybe_diagnostics!(self, specialize(arg_ptr, arg_count, &mut out))?;
-        Ok(ComponentType(Unknown::new_with_ref(out).unwrap()))
+        Ok(ComponentType(Unknown::new(out).unwrap()))
     }
 
     pub fn layout(&self, target: i64) -> Result<&reflect::Shader> {
         let mut out_diagnostics = null_mut();
         let ptr = vcall!(self, getLayout(target, &mut out_diagnostics));
         if ptr.is_null() {
-            if let Some(diagnostics) = Unknown::new_with_ref(out_diagnostics) {
+            if let Some(diagnostics) = Unknown::new(out_diagnostics) {
                 Err(Error::Blob(Blob(diagnostics)))
             } else {
                 Err(Error::Unknown)
@@ -682,20 +682,20 @@ impl ComponentType {
         let mut out_linked_component_type = null_mut();
         vcall_maybe_diagnostics!(self, link(&mut out_linked_component_type))?;
         Ok(ComponentType(
-            Unknown::new_with_ref(out_linked_component_type).unwrap(),
+            Unknown::new(out_linked_component_type).unwrap(),
         ))
     }
 
     pub fn target_code(&self, target: i64) -> Result<Blob> {
         let mut code = null_mut();
         vcall_maybe_diagnostics!(self, getTargetCode(target, &mut code))?;
-        Ok(Blob(Unknown::new_with_ref(code).unwrap()))
+        Ok(Blob(Unknown::new(code).unwrap()))
     }
 
     pub fn target_metadata(&self, target: i64) -> Result<Metadata> {
         let mut metadata = null_mut();
         vcall_maybe_diagnostics!(self, getTargetMetadata(target, &mut metadata))?;
-        Ok(Metadata(Castable(Unknown::new_with_ref(metadata).unwrap())))
+        Ok(Metadata(Castable(Unknown::new(metadata).unwrap())))
     }
 
     ///  Get the compiled code for the entry point at `entryPointIndex` for the chosen `targetIndex`
@@ -710,7 +710,7 @@ impl ComponentType {
     pub fn entry_point_code(&self, index: i64, target: i64) -> Result<Blob> {
         let mut code = null_mut();
         vcall_maybe_diagnostics!(self, getEntryPointCode(index, target, &mut code))?;
-        Ok(Blob(Unknown::new_with_ref(code).unwrap()))
+        Ok(Blob(Unknown::new(code).unwrap()))
     }
 }
 
@@ -789,7 +789,7 @@ impl Module {
             findEntryPointByName(name.as_ptr(), &mut out_entry_point)
         )?;
         Ok(EntryPoint(ComponentType(
-            Unknown::new_with_ref(out_entry_point).unwrap(),
+            Unknown::new(out_entry_point).unwrap(),
         )))
     }
 
@@ -806,7 +806,7 @@ impl Module {
         let mut out_entry_point = null_mut();
         vcall_maybe!(self, getDefinedEntryPoint(index as _, &mut out_entry_point))?;
         Ok(EntryPoint(ComponentType(
-            Unknown::new_with_ref(out_entry_point).unwrap(),
+            Unknown::new(out_entry_point).unwrap(),
         )))
     }
 
@@ -819,7 +819,7 @@ impl Module {
     pub fn serialize(&self) -> Result<Blob> {
         let mut out = null_mut();
         vcall_maybe!(self, serialize(&mut out))?;
-        Ok(Blob(Unknown::new_with_ref(out).unwrap()))
+        Ok(Blob(Unknown::new(out).unwrap()))
     }
 
     /// Write the serialized representation of this module to a file.
