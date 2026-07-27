@@ -152,12 +152,6 @@ impl Unknown {
     fn new<T>(ptr: *mut T) -> Option<Self> {
         NonNull::new(ptr).map(|p| Self(p.cast()))
     }
-
-    // fn new_with_ref<T>(ptr: *mut T) -> Option<Self> {
-    //     let unknown = Self::new(ptr)?;
-    //     vcall!(unknown, ISlangUnknown_addRef());
-    //     Some(unknown)
-    // }
 }
 
 #[repr(transparent)]
