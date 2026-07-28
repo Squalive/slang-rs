@@ -1,19 +1,17 @@
-mod com;
-
-pub use com::*;
-
 use crate::{
-    CompileTarget, DebugInfoLevel, FloatingPointMode, LineDirectiveMode, MatrixLayoutMode,
-    OptimizationLevel, ProfileId, SourceLanguage, Stage, reflect,
+    CompileTarget, DebugInfoLevel, FileSystem, FileSystemImpl, FloatingPointMode,
+    LineDirectiveMode, OptimizationLevel, ProfileId, SourceLanguage, Stage, reflect,
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::{marker::PhantomData, mem::zeroed, ptr::null};
-use std::ffi::{CString, c_char};
+use std::{
+    ffi::{CString, c_char},
+    sync::Arc,
+};
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct SessionDesc<'a> {
     pub(crate) inner: sys::slang_SessionDesc,
-    pub(crate) file_system: Option<Com<Box<dyn ISlangFileSystem>>>,
     _marker: PhantomData<&'a ()>,
 }
 
@@ -24,18 +22,12 @@ impl Default for SessionDesc<'_> {
                 structureSize: size_of::<sys::slang_SessionDesc>(),
                 ..unsafe { zeroed() }
             },
-            file_system: None,
             _marker: PhantomData,
         }
     }
 }
 
 impl<'a> SessionDesc<'a> {
-    pub fn matrix_layout_mode(mut self, mode: MatrixLayoutMode) -> Self {
-        self.inner.defaultMatrixLayoutMode = mode;
-        self
-    }
-
     pub fn targets(mut self, targets: &'a [TargetDesc]) -> Self {
         self.inner.targets = targets.as_ptr() as _;
         self.inner.targetCount = targets.len() as _;
@@ -59,8 +51,13 @@ impl<'a> SessionDesc<'a> {
         self
     }
 
-    pub fn file_system(mut self, file_system: impl ISlangFileSystem + 'static) -> Self {
-        self.file_system = Some(Com::new_file_system(Box::new(file_system)));
+    pub fn file_system(mut self, file_system: Arc<dyn FileSystem>) -> Self {
+        let file_system: &mut FileSystemImpl =
+            Box::leak(Box::new(FileSystemImpl::new(file_system)));
+
+        let file_system: *mut sys::ISlangFileSystem = (file_system as *mut FileSystemImpl).cast();
+
+        self.inner.fileSystem = file_system;
         self
     }
 }

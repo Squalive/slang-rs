@@ -4,11 +4,13 @@ extern crate slang_sys as sys;
 pub mod helper;
 pub mod reflect;
 
+mod com;
 mod error;
 #[cfg(feature = "preprocess")]
 mod preprocess;
 mod types;
 
+pub use com::*;
 pub use error::*;
 #[cfg(feature = "preprocess")]
 pub use preprocess::{FileType, get_file_type, preprocess};
@@ -204,6 +206,14 @@ impl Debug for Blob {
 }
 
 impl Blob {
+    pub fn from_slice(data: &[u8]) -> Self {
+        unsafe {
+            let blob: *mut sys::ISlangBlob =
+                sys::slang_createBlob(data.as_ptr().cast(), data.len());
+            Blob(Unknown(NonNull::new_unchecked(blob.cast())))
+        }
+    }
+
     pub fn as_slice(&self) -> &[u8] {
         let ptr = vcall!(self, getBufferPointer());
         let size = vcall!(self, getBufferSize());
@@ -218,30 +228,6 @@ impl Blob {
 impl Blob {
     pub fn is_interface_compatible(uuid: &Uuid) -> bool {
         Unknown::matches(uuid) || Blob::matches(uuid)
-    }
-}
-
-#[repr(transparent)]
-#[derive(Clone)]
-pub struct FileSystem(Unknown);
-
-unsafe impl Interface for FileSystem {
-    type Vtable = sys::ISlangFileSystem_vtable;
-    const UUID: Uuid = uuid(
-        0x003A09FC,
-        0x3A4D,
-        0x4BA0,
-        [0xAD, 0x60, 0x1F, 0xD8, 0x63, 0xA9, 0x15, 0xAB],
-    );
-
-    fn new(unknown: Unknown) -> Self {
-        Self(unknown)
-    }
-}
-
-impl FileSystem {
-    pub fn is_interface_compatible(uuid: &Uuid) -> bool {
-        Unknown::matches(uuid) || Castable::matches(uuid) || FileSystem::matches(uuid)
     }
 }
 
@@ -286,12 +272,7 @@ impl GlobalSession {
     pub fn create_session(&self, desc: &SessionDesc) -> Result<Session> {
         let mut ptr = null_mut();
 
-        let mut raw_desc = desc.inner;
-        if let Some(file_system) = desc.file_system.as_ref() {
-            raw_desc.fileSystem = unsafe { file_system.clone().into_raw() as _ };
-        }
-
-        vcall_maybe!(self, createSession(&raw_desc, &mut ptr))?;
+        vcall_maybe!(self, createSession(&desc.inner, &mut ptr))?;
 
         // SAFETY: We checked above with maybe
         Ok(Unknown::new(ptr).map(Session).unwrap())
@@ -360,18 +341,17 @@ impl Session {
         &self,
         module_name: &str,
         path: &str,
-        blob: impl ISlangBlob,
+        blob: &Blob,
     ) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let path = CString::new(path).map_err(|_| Error::Unknown)?;
-        let blob = Com::new_blob(blob).into_unknown();
         let mut out_diagnostics = null_mut();
         let module = vcall!(
             self,
             loadModuleFromIRBlob(
                 module_name.as_ptr(),
                 path.as_ptr(),
-                blob.0.as_ptr().cast(),
+                blob.0.as_raw::<sys::ISlangBlob>(),
                 &mut out_diagnostics
             )
         );
@@ -405,18 +385,17 @@ impl Session {
         &self,
         module_name: &str,
         path: &str,
-        source: impl ISlangBlob,
+        source: &Blob,
     ) -> Result<Module> {
         let module_name = CString::new(module_name).map_err(|_| Error::Unknown)?;
         let path = CString::new(path).map_err(|_| Error::Unknown)?;
-        let source = Com::new_blob(source).into_unknown();
         let mut out_diagnostics = null_mut();
         let module = vcall!(
             self,
             loadModuleFromSource(
                 module_name.as_ptr(),
                 path.as_ptr(),
-                source.0.as_ptr().cast(),
+                source.0.as_raw::<sys::ISlangBlob>(),
                 &mut out_diagnostics
             )
         );
@@ -437,23 +416,23 @@ impl Session {
         (0..self.loaded_module_count()).map(|i| self.get_loaded_module(i).unwrap())
     }
 
-    /** Checks if a precompiled binary module is up-to-date with the current compiler
-        option settings and the source file contents.
-    */
-    pub fn is_binary_module_up_to_date(
-        &self,
-        module_path: &str,
-        binary_module_blob: impl ISlangBlob,
-    ) -> bool {
-        let Ok(module_path) = CString::new(module_path) else {
-            return false;
-        };
-        let binary_module_blob = Com::new_blob(binary_module_blob).into_unknown();
-        vcall!(
-            self,
-            isBinaryModuleUpToDate(module_path.as_ptr(), binary_module_blob.0.as_ptr().cast())
-        )
-    }
+    // /** Checks if a precompiled binary module is up-to-date with the current compiler
+    //     option settings and the source file contents.
+    // */
+    // pub fn is_binary_module_up_to_date(
+    //     &self,
+    //     module_path: &str,
+    //     binary_module_blob: impl ISlangBlob,
+    // ) -> bool {
+    //     let Ok(module_path) = CString::new(module_path) else {
+    //         return false;
+    //     };
+    //     let binary_module_blob = Com::new_blob(binary_module_blob).into_unknown();
+    //     vcall!(
+    //         self,
+    //         isBinaryModuleUpToDate(module_path.as_ptr(), binary_module_blob.0.as_ptr().cast())
+    //     )
+    // }
 
     /// Combine multiple component types to create a composite component type.
     ///

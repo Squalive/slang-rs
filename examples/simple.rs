@@ -2,28 +2,22 @@ use slang::GlobalSession;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 use tracing::metadata::LevelFilter;
 
 fn main() {
     struct Filesystem;
 
-    impl slang::ISlangUnknown for Filesystem {
-        fn is_interface_compatible(&self, uuid: &slang::Uuid) -> bool {
-            slang::FileSystem::is_interface_compatible(uuid)
-        }
-    }
+    impl slang::FileSystem for Filesystem {
+        fn load_file(&self, path: &str) -> std::io::Result<Box<[u8]>> {
+            println!("Trying to load {}", path);
 
-    impl slang::ISlangCastable for Filesystem {}
-
-    impl slang::ISlangFileSystem for Filesystem {
-        fn load_file(&self, path: &Path, buf: &mut Vec<u8>) -> slang::Result<usize> {
-            println!("Trying to load {}", path.display());
-
+            let mut buf = Vec::new();
             let mut file = File::open(path)?;
-            let bytes = file.read_to_end(buf)?;
+            let _bytes = file.read_to_end(&mut buf)?;
 
-            println!("Loaded {}", path.display());
-            Ok(bytes)
+            println!("Loaded {}", path);
+            Ok(buf.into_boxed_slice())
         }
     }
 
@@ -51,7 +45,7 @@ fn main() {
     let session_desc = slang::SessionDesc::default()
         .targets(&targets)
         .options(&session_options)
-        .file_system(filesystem);
+        .file_system(Arc::new(filesystem));
 
     let session = global_session.create_session(&session_desc).unwrap();
     {
